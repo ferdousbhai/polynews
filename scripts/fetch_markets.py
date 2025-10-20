@@ -127,8 +127,12 @@ def calculate_price_changes(market: dict[str, Any], historical_snapshots: dict[s
     current_price = None
     if market.get('outcomePrices'):
         try:
-            current_price = float(market['outcomePrices'][0]) * 100  # Convert to percentage
-        except (ValueError, TypeError, IndexError):
+            prices = market['outcomePrices']
+            # Parse if it's a JSON string
+            if isinstance(prices, str):
+                prices = json.loads(prices)
+            current_price = float(prices[0]) * 100  # Convert to percentage
+        except (ValueError, TypeError, IndexError, json.JSONDecodeError):
             return changes
 
     if current_price is None:
@@ -154,10 +158,14 @@ def calculate_price_changes(market: dict[str, Any], historical_snapshots: dict[s
 
         if historical_market and historical_market.get('outcomePrices'):
             try:
-                historical_price = float(historical_market['outcomePrices'][0]) * 100
+                prices = historical_market['outcomePrices']
+                # Parse if it's a JSON string
+                if isinstance(prices, str):
+                    prices = json.loads(prices)
+                historical_price = float(prices[0]) * 100
                 price_change = current_price - historical_price
                 changes[period] = round(price_change, 2)
-            except (ValueError, TypeError, IndexError):
+            except (ValueError, TypeError, IndexError, json.JSONDecodeError):
                 continue
 
     return changes

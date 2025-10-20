@@ -402,8 +402,19 @@
 
         function createMarketCard(market) {
             const daysRemaining = getDaysRemaining(market.endDateIso);
-            const probability = market.outcomePrices ?
-                (parseFloat(market.outcomePrices[0]) * 100).toFixed(1) : 50;
+
+            // Parse outcomePrices if it's a JSON string
+            let outcomePrices = market.outcomePrices;
+            if (typeof outcomePrices === 'string') {
+                try {
+                    outcomePrices = JSON.parse(outcomePrices);
+                } catch (e) {
+                    outcomePrices = null;
+                }
+            }
+
+            const probability = outcomePrices && outcomePrices[0] ?
+                (parseFloat(outcomePrices[0]) * 100).toFixed(1) : 50;
 
             const changes = market.priceChanges || {};
             const changesHtml = `
@@ -413,7 +424,7 @@
             `;
 
             return `
-                <div class="market-card" onclick="window.open('https://polymarket.com/event/${market.slug}', '_blank')">
+                <div class="market-card" onclick="window.open('https://polymarket.com/${market.slug}', '_blank')">
                     <div class="market-header">
                         <div class="days-remaining">${daysRemaining} days left</div>
                         <div class="market-volume">${formatVolume(market.volume)}</div>
