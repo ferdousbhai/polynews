@@ -13,7 +13,7 @@
             <div class="header-title">
                 <h1>Polymarket Predictions</h1>
             </div>
-            <p class="subtitle">Top predictions closing in the next 90 days</p>
+            <p class="subtitle">Predictions closing in the next 90 days</p>
             <p class="last-updated" id="lastUpdated"></p>
         </div>
     </header>
@@ -21,7 +21,16 @@
     <div class="container">
         <div class="filters-section">
             <div class="filters-header">
-                <a class="filters-reset" onclick="resetFilters()">Show All</a>
+                <div class="sort-controls">
+                    <label for="sortBy" class="sort-label">Sort by:</label>
+                    <select id="sortBy" class="sort-select" onchange="changeSortOrder(this.value)">
+                        <option value="volume">Volume</option>
+                        <option value="change1h">1H Change</option>
+                        <option value="change24h">24H Change</option>
+                        <option value="change7d">7D Change</option>
+                    </select>
+                    <a class="filters-reset" onclick="resetFilters()">Show All</a>
+                </div>
             </div>
             <div class="category-filters" id="categoryFilters">
                 <!-- Categories will be dynamically inserted here -->

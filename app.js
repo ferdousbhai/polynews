@@ -1,6 +1,7 @@
 let allMarkets = [];
 let selectedCategories = new Set();
 let currentLastUpdated = null;
+let currentSortOrder = 'volume';
 
 // Category icons/emojis
 const categoryIcons = {
@@ -12,6 +13,9 @@ const categoryIcons = {
     'Geopolitics': '🌍',
     'Technology': '💻',
     'Science': '🔬',
+    'Pop Culture': '⭐',
+    'Legal': '⚖️',
+    'Conspiracy': '👽',
     'Other': '📊'
 };
 
@@ -23,6 +27,16 @@ function loadCategoryPreferences() {
             selectedCategories = new Set(JSON.parse(saved));
         } catch (e) {
             selectedCategories = new Set();
+        }
+    }
+
+    // Load saved sort order
+    const savedSort = localStorage.getItem('sortOrder');
+    if (savedSort) {
+        currentSortOrder = savedSort;
+        const sortSelect = document.getElementById('sortBy');
+        if (sortSelect) {
+            sortSelect.value = savedSort;
         }
     }
 }
@@ -49,6 +63,13 @@ function resetFilters() {
     selectedCategories.clear();
     saveCategoryPreferences();
     renderCategoryFilters();
+    renderMarkets();
+}
+
+// Change sort order
+function changeSortOrder(sortOrder) {
+    currentSortOrder = sortOrder;
+    localStorage.setItem('sortOrder', sortOrder);
     renderMarkets();
 }
 
@@ -85,14 +106,34 @@ function renderCategoryFilters() {
 function renderMarkets() {
     const contentEl = document.getElementById('content');
 
-    const filteredMarkets = selectedCategories.size === 0
-        ? allMarkets
+    let filteredMarkets = selectedCategories.size === 0
+        ? [...allMarkets]
         : allMarkets.filter(m => selectedCategories.has(m.category || 'Other'));
 
     if (filteredMarkets.length === 0) {
         contentEl.innerHTML = '<div class="no-results">No predictions match the selected categories.</div>';
         return;
     }
+
+    // Sort markets based on current sort order
+    filteredMarkets.sort((a, b) => {
+        if (currentSortOrder === 'volume') {
+            return (b.volume || 0) - (a.volume || 0);
+        } else if (currentSortOrder === 'change1h') {
+            const changeA = a.priceChanges?.hour1 || 0;
+            const changeB = b.priceChanges?.hour1 || 0;
+            return Math.abs(changeB) - Math.abs(changeA);
+        } else if (currentSortOrder === 'change24h') {
+            const changeA = a.priceChanges?.hours24 || 0;
+            const changeB = b.priceChanges?.hours24 || 0;
+            return Math.abs(changeB) - Math.abs(changeA);
+        } else if (currentSortOrder === 'change7d') {
+            const changeA = a.priceChanges?.days7 || 0;
+            const changeB = b.priceChanges?.days7 || 0;
+            return Math.abs(changeB) - Math.abs(changeA);
+        }
+        return 0;
+    });
 
     const cardsHtml = filteredMarkets.map(market => createMarketCard(market)).join('');
     contentEl.innerHTML = `<div class="market-grid">${cardsHtml}</div>`;

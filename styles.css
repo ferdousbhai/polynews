@@ -351,9 +351,42 @@ h1 {
 
 .filters-header {
     display: flex;
-    justify-content: flex-end;
+    justify-content: flex-start;
     align-items: center;
     margin-bottom: 12px;
+}
+
+.sort-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.sort-label {
+    font-size: 0.875rem;
+    color: #717171;
+    font-weight: 500;
+}
+
+.sort-select {
+    padding: 6px 12px;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    color: #222;
+    background: white;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.15s ease;
+}
+
+.sort-select:hover {
+    border-color: #222;
+}
+
+.sort-select:focus {
+    outline: none;
+    border-color: #222;
 }
 
 .filters-reset {
@@ -469,5 +502,15 @@ h1 {
 
     .filters-section {
         padding: 16px;
+    }
+
+    .filters-header {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .sort-controls {
+        width: 100%;
+        flex-wrap: wrap;
     }
 }

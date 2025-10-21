@@ -204,7 +204,7 @@ class MarketInput(BaseModel):
 class MarketStatement(BaseModel):
     """Output format with declarative statement and category"""
     statement: str = Field(description="Declarative statement based on most likely outcome")
-    category: str = Field(description="Market category: Politics, Sports, Crypto, Economics, Entertainment, Geopolitics, Technology, Science, or Other")
+    category: str = Field(description="Market category: Politics, Sports, Crypto, Economics, Entertainment, Geopolitics, Technology, Science, Pop Culture, Legal, Conspiracy, or Other")
 
 def generate_statements(markets: list[dict[str, Any]]) -> list[MarketStatement]:
     """Use LLM to convert questions to declarative statements"""
@@ -248,6 +248,9 @@ Categories (choose one):
 - Geopolitics: Wars, invasions, international conflicts, leaders
 - Technology: AI achievements, tech companies, product launches
 - Science: Climate, health, pandemics, vaccines, medical discoveries, space, natural disasters
+- Pop Culture: Celebrity relationships, wealth milestones, personal life of public figures
+- Legal: Criminal trials, lawsuits, indictments, verdicts, jail time
+- Conspiracy: Fringe theories, supernatural, alternative facts, unproven claims
 - Other: Anything that doesn't fit above categories
 
 Examples:
@@ -255,6 +258,9 @@ Examples:
 - "Will Bitcoin reach $150k?" + No → Statement: "Bitcoin will not reach $150k." Category: "Crypto"
 - "Russia x Ukraine ceasefire?" + No → Statement: "There will not be a Russia x Ukraine ceasefire." Category: "Geopolitics"
 - "New pandemic in 2025?" + No → Statement: "There will not be a new pandemic in 2025." Category: "Science"
+- "Elon Musk trillionaire in 2025?" + No → Statement: "Elon Musk will not be a trillionaire in 2025." Category: "Pop Culture"
+- "Luigi Mangione guilty?" + Yes → Statement: "Luigi Mangione will be guilty." Category: "Legal"
+- "Is Earth flat?" + No → Statement: "Earth is not flat." Category: "Conspiracy"
 
 Markets to convert:
 """
