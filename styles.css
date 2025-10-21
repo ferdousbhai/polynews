@@ -351,15 +351,9 @@ h1 {
 
 .filters-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
-    margin-bottom: 16px;
-}
-
-.filters-title {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #222;
+    margin-bottom: 12px;
 }
 
 .filters-reset {
@@ -382,7 +376,7 @@ h1 {
 }
 
 .category-chip {
-    padding: 8px 14px;
+    padding: 8px 12px;
     border-radius: 20px;
     border: 1px solid #d0d0d0;
     background: white;

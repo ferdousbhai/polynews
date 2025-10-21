@@ -11,6 +11,7 @@ const categoryIcons = {
     'Entertainment': '🎬',
     'Geopolitics': '🌍',
     'Technology': '💻',
+    'Science': '🔬',
     'Other': '📊'
 };
 
@@ -59,8 +60,10 @@ function renderCategoryFilters() {
         categoryCounts[category] = (categoryCounts[category] || 0) + 1;
     });
 
-    // Sort categories by count (most markets first)
+    // Sort categories by count (most markets first), but always put "Other" last
     const sortedCategories = Object.keys(categoryCounts).sort((a, b) => {
+        if (a === 'Other') return 1;
+        if (b === 'Other') return -1;
         return categoryCounts[b] - categoryCounts[a];
     });
     const filtersHtml = sortedCategories.map(category => {

@@ -204,7 +204,7 @@ class MarketInput(BaseModel):
 class MarketStatement(BaseModel):
     """Output format with declarative statement and category"""
     statement: str = Field(description="Declarative statement based on most likely outcome")
-    category: str = Field(description="Market category: Politics, Sports, Crypto, Economics, Entertainment, Geopolitics, Technology, or Other")
+    category: str = Field(description="Market category: Politics, Sports, Crypto, Economics, Entertainment, Geopolitics, Technology, Science, or Other")
 
 def generate_statements(markets: list[dict[str, Any]]) -> list[MarketStatement]:
     """Use LLM to convert questions to declarative statements"""
@@ -247,12 +247,14 @@ Categories (choose one):
 - Entertainment: Movies, box office, celebrities, awards
 - Geopolitics: Wars, invasions, international conflicts, leaders
 - Technology: AI achievements, tech companies, product launches
+- Science: Climate, health, pandemics, vaccines, medical discoveries, space, natural disasters
 - Other: Anything that doesn't fit above categories
 
 Examples:
 - "Will Trump win?" + Yes → Statement: "Trump will win." Category: "Politics"
 - "Will Bitcoin reach $150k?" + No → Statement: "Bitcoin will not reach $150k." Category: "Crypto"
 - "Russia x Ukraine ceasefire?" + No → Statement: "There will not be a Russia x Ukraine ceasefire." Category: "Geopolitics"
+- "New pandemic in 2025?" + No → Statement: "There will not be a new pandemic in 2025." Category: "Science"
 
 Markets to convert:
 """
