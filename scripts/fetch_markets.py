@@ -381,8 +381,6 @@ def load_previous_markets() -> dict[str, dict[str, Any]]:
     except Exception:
         return {}
 
-    return {}
-
 def deduplicate_related_markets(markets: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Deduplicate markets that are part of the same event (e.g., multiple candidates for same election).

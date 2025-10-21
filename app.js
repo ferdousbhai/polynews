@@ -26,8 +26,12 @@ function loadCategoryPreferences() {
         try {
             selectedCategories = new Set(JSON.parse(saved));
         } catch (e) {
-            selectedCategories = new Set();
+            // Default to all categories selected
+            selectedCategories = new Set(Object.keys(categoryIcons));
         }
+    } else {
+        // First load: select all categories by default
+        selectedCategories = new Set(Object.keys(categoryIcons));
     }
 
     // Load saved sort order
@@ -58,9 +62,9 @@ function toggleCategory(category) {
     renderMarkets();
 }
 
-// Reset all filters
+// Reset all filters (select all categories)
 function resetFilters() {
-    selectedCategories.clear();
+    selectedCategories = new Set(Object.keys(categoryIcons));
     saveCategoryPreferences();
     renderCategoryFilters();
     renderMarkets();
@@ -90,7 +94,7 @@ function renderCategoryFilters() {
     const filtersHtml = sortedCategories.map(category => {
         const count = categoryCounts[category];
         const icon = categoryIcons[category] || '📊';
-        const isActive = selectedCategories.size === 0 || selectedCategories.has(category);
+        const isActive = selectedCategories.has(category);
         return `
             <div class="category-chip ${isActive ? 'active' : ''}" onclick="toggleCategory('${category}')">
                 <span>${icon} ${category}</span>
@@ -106,9 +110,7 @@ function renderCategoryFilters() {
 function renderMarkets() {
     const contentEl = document.getElementById('content');
 
-    let filteredMarkets = selectedCategories.size === 0
-        ? [...allMarkets]
-        : allMarkets.filter(m => selectedCategories.has(m.category || 'Other'));
+    let filteredMarkets = allMarkets.filter(m => selectedCategories.has(m.category || 'Other'));
 
     if (filteredMarkets.length === 0) {
         contentEl.innerHTML = '<div class="no-results">No predictions match the selected categories.</div>';
@@ -218,6 +220,14 @@ function formatChange(change, period) {
     return `<span class="change-badge ${className}">${period} ${arrow}${sign}${absChange.toFixed(1)}%</span>`;
 }
 
+async function fetchMarketsData() {
+    const response = await fetch(`data/markets.json?t=${Date.now()}`);
+    if (!response.ok) {
+        throw new Error(`Failed to load data: ${response.status}`);
+    }
+    return response.json();
+}
+
 function createMarketCard(market) {
     const daysRemaining = getDaysRemaining(market.endDateIso);
 
@@ -286,13 +296,7 @@ async function loadMarkets() {
     const lastUpdatedEl = document.getElementById('lastUpdated');
 
     try {
-        const response = await fetch('data/markets.json?t=' + Date.now());
-
-        if (!response.ok) {
-            throw new Error(`Failed to load data: ${response.status}`);
-        }
-
-        const data = await response.json();
+        const data = await fetchMarketsData();
 
         // Store current timestamp for auto-refresh checks
         currentLastUpdated = data.lastUpdated;
@@ -347,10 +351,7 @@ setInterval(() => {
 // Auto-refresh: Check for new data every 60 seconds
 setInterval(async () => {
     try {
-        const response = await fetch('data/markets.json?t=' + Date.now());
-        if (!response.ok) return;
-
-        const data = await response.json();
+        const data = await fetchMarketsData();
 
         // If data has been updated, reload everything
         if (data.lastUpdated !== currentLastUpdated) {
