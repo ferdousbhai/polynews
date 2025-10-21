@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from google import genai
 from pydantic import BaseModel, Field
+from decimal import Decimal
 
 # Load environment variables (only for local development)
 try:
@@ -537,6 +538,13 @@ def filter_and_sort_markets(markets: list[dict[str, Any]], historical_snapshots:
     # Return all filtered markets (frontend will display top 50)
     return filtered
 
+class DecimalEncoder(json.JSONEncoder):
+    """Custom JSON encoder to convert Decimal to float"""
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return super().default(obj)
+
 def save_markets(markets: list[dict[str, Any]]) -> None:
     """Save markets to JSON file"""
     data = {
@@ -546,7 +554,7 @@ def save_markets(markets: list[dict[str, Any]]) -> None:
     }
 
     with open(OUTPUT_FILE, 'w') as f:
-        json.dump(data, f, indent=2)
+        json.dump(data, f, indent=2, cls=DecimalEncoder)
 
     print(f"✅ Saved {len(markets)} markets to {OUTPUT_FILE}")
 
@@ -562,7 +570,7 @@ def save_historical_snapshot(markets: list[dict[str, Any]]) -> None:
     }
 
     with open(snapshot_file, 'w') as f:
-        json.dump(snapshot_data, f)
+        json.dump(snapshot_data, f, cls=DecimalEncoder)
 
     print(f"📸 Saved historical snapshot: {snapshot_file}")
 
