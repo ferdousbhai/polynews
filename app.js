@@ -96,13 +96,19 @@ function renderMarkets() {
 }
 
 function formatVolume(volume) {
-    if (volume >= 1000000) {
-        return `${(volume / 1000000).toFixed(2)}M`;
+    // Convert to number and handle invalid values
+    const num = Number(volume);
+    if (!num || isNaN(num)) {
+        return '0';
     }
-    if (volume >= 1000) {
-        return `${(volume / 1000).toFixed(1)}K`;
+
+    if (num >= 1000000) {
+        return `${(num / 1000000).toFixed(2)}M`;
     }
-    return `${volume.toFixed(0)}`;
+    if (num >= 1000) {
+        return `${(num / 1000).toFixed(1)}K`;
+    }
+    return `${num.toFixed(0)}`;
 }
 
 function getDaysRemaining(endDate) {
