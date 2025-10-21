@@ -7,4 +7,3 @@ venv/
 
 # uv
 .venv/
-uv.lock
