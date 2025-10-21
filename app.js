@@ -59,7 +59,10 @@ function renderCategoryFilters() {
         categoryCounts[category] = (categoryCounts[category] || 0) + 1;
     });
 
-    const sortedCategories = Object.keys(categoryCounts).sort();
+    // Sort categories by count (most markets first)
+    const sortedCategories = Object.keys(categoryCounts).sort((a, b) => {
+        return categoryCounts[b] - categoryCounts[a];
+    });
     const filtersHtml = sortedCategories.map(category => {
         const count = categoryCounts[category];
         const icon = categoryIcons[category] || '📊';
@@ -253,9 +256,9 @@ async function loadMarkets() {
             return;
         }
 
-        // Store all markets globally (but only show top 100 by volume)
+        // Store all markets globally
         // Backend returns all markets sorted by volume
-        allMarkets = data.markets.slice(0, 100);
+        allMarkets = data.markets;
 
         // Load saved category preferences
         loadCategoryPreferences();
