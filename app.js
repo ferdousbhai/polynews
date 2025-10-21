@@ -1,5 +1,6 @@
 let allMarkets = [];
 let selectedCategories = new Set();
+let currentLastUpdated = null;
 
 // Category icons/emojis
 const categoryIcons = {
@@ -121,15 +122,28 @@ function formatDate(dateString) {
 function formatLastUpdated(timestamp) {
     const date = new Date(timestamp);
     const now = new Date();
-    const diff = Math.floor((now - date) / 1000 / 60);
+    const totalMinutes = Math.floor((now - date) / 1000 / 60);
 
-    if (diff < 1) return 'Updated just now';
-    if (diff < 60) return `Updated ${diff} minute${diff > 1 ? 's' : ''} ago`;
+    if (totalMinutes < 1) return 'Updated just now';
+    if (totalMinutes < 60) return `Updated ${totalMinutes} minute${totalMinutes > 1 ? 's' : ''} ago`;
 
-    const hours = Math.floor(diff / 60);
-    if (hours < 24) return `Updated ${hours} hour${hours > 1 ? 's' : ''} ago`;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
 
-    return `Updated ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+    if (hours < 24) {
+        if (minutes === 0) {
+            return `Updated ${hours} hour${hours > 1 ? 's' : ''} ago`;
+        }
+        return `Updated ${hours} hour${hours > 1 ? 's' : ''}, ${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    }
+
+    const days = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
+
+    if (remainingHours === 0) {
+        return `Updated ${days} day${days > 1 ? 's' : ''} ago`;
+    }
+    return `Updated ${days} day${days > 1 ? 's' : ''}, ${remainingHours} hour${remainingHours > 1 ? 's' : ''} ago`;
 }
 
 function truncateText(text, maxLength) {
@@ -227,6 +241,9 @@ async function loadMarkets() {
 
         const data = await response.json();
 
+        // Store current timestamp for auto-refresh checks
+        currentLastUpdated = data.lastUpdated;
+
         if (data.lastUpdated) {
             lastUpdatedEl.textContent = formatLastUpdated(data.lastUpdated);
         }
@@ -261,4 +278,34 @@ async function loadMarkets() {
     }
 }
 
+// Initial load
 loadMarkets();
+
+// Update the "Updated X ago" text every 10 seconds to keep it current
+setInterval(() => {
+    if (currentLastUpdated) {
+        const lastUpdatedEl = document.getElementById('lastUpdated');
+        if (lastUpdatedEl) {
+            lastUpdatedEl.textContent = formatLastUpdated(currentLastUpdated);
+        }
+    }
+}, 10000); // Update every 10 seconds
+
+// Auto-refresh: Check for new data every 60 seconds
+setInterval(async () => {
+    try {
+        const response = await fetch('data/markets.json?t=' + Date.now());
+        if (!response.ok) return;
+
+        const data = await response.json();
+
+        // If data has been updated, reload everything
+        if (data.lastUpdated !== currentLastUpdated) {
+            console.log('New data detected, refreshing...');
+            loadMarkets();
+        }
+    } catch (error) {
+        // Silently fail - don't disrupt user experience
+        console.error('Auto-refresh check failed:', error);
+    }
+}, 60000); // Check every 60 seconds

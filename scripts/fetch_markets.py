@@ -540,7 +540,7 @@ def filter_and_sort_markets(markets: list[dict[str, Any]], historical_snapshots:
 def save_markets(markets: list[dict[str, Any]]) -> None:
     """Save markets to JSON file"""
     data = {
-        'lastUpdated': datetime.now(UTC).isoformat() + 'Z',
+        'lastUpdated': datetime.now(UTC).isoformat().replace('+00:00', 'Z'),
         'marketCount': len(markets),
         'markets': markets
     }
@@ -557,7 +557,7 @@ def save_historical_snapshot(markets: list[dict[str, Any]]) -> None:
 
     # Save full market data for historical reference
     snapshot_data = {
-        'timestamp': datetime.now(UTC).isoformat() + 'Z',
+        'timestamp': datetime.now(UTC).isoformat().replace('+00:00', 'Z'),
         'markets': markets
     }
 
