@@ -97,6 +97,8 @@ jobs:
         # Copy any other web assets if they exist
         [ -d assets ] && cp -r assets _site/ || true
         [ -d images ] && cp -r images _site/ || true
+        # Create empty .gitignore in _site to prevent root .gitignore from blocking data/
+        echo "# Allow all files in deployment artifact" > _site/.gitignore
 
     - name: Upload GitHub Pages artifact
       uses: actions/upload-pages-artifact@v3
