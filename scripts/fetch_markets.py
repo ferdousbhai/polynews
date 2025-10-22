@@ -18,7 +18,7 @@ except ImportError:
     pass  # python-dotenv not installed (e.g., in GitHub Actions)
 
 API_URL = "https://gamma-api.polymarket.com/markets"
-OUTPUT_FILE = "markets.json"
+OUTPUT_FILE = "docs/markets.json"
 DB_FILE = "markets.db"
 TIME_WINDOW = timedelta(days=90)
 
