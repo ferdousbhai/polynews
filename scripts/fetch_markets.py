@@ -100,8 +100,12 @@ def init_database() -> None:
     conn.close()
     print(f"📊 Database initialized: {DB_FILE}")
 
-async def fetch_page(client: httpx.AsyncClient, offset: int, limit: int) -> list[dict[str, Any]]:
-    """Fetch a single page of markets with validation"""
+async def fetch_page(client: httpx.AsyncClient, offset: int, limit: int) -> tuple[list[dict[str, Any]], int]:
+    """Fetch a single page of markets with validation
+
+    Returns:
+        tuple: (validated_markets, raw_api_count) where raw_api_count is how many markets the API returned
+    """
     params = {
         'limit': limit,
         'offset': offset,
@@ -114,6 +118,7 @@ async def fetch_page(client: httpx.AsyncClient, offset: int, limit: int) -> list
         response = await client.get(API_URL, params=params, timeout=30)
         response.raise_for_status()
         raw_data = response.json()
+        raw_count = len(raw_data)
 
         # Validate each market with Pydantic
         validated_markets = []
@@ -130,6 +135,10 @@ async def fetch_page(client: httpx.AsyncClient, offset: int, limit: int) -> list
                 if validation_errors <= 3:  # Only print first 3 errors to avoid spam
                     print(f"  ⚠️  Validation error for market at index {i + offset}: {e.error_count()} field(s) invalid")
                     print(f"      Market ID: {market_data.get('id', 'unknown')}, Question: {market_data.get('question', 'unknown')[:60]}")
+                    # Show which fields failed validation
+                    for error in e.errors():
+                        field = '.'.join(str(x) for x in error['loc'])
+                        print(f"      ❌ Field '{field}': {error['msg']}")
                 # Skip invalid markets
                 continue
 
@@ -137,19 +146,19 @@ async def fetch_page(client: httpx.AsyncClient, offset: int, limit: int) -> list
             print(f"  ⚠️  ... and {validation_errors - 3} more validation errors")
 
         if validation_errors > 0:
-            print(f"  ✓ Validated {len(validated_markets)}/{len(raw_data)} markets from offset {offset} (skipped {validation_errors} invalid)")
+            print(f"  ✓ Validated {len(validated_markets)}/{raw_count} markets from offset {offset} (skipped {validation_errors} invalid)")
 
-        return validated_markets
+        return validated_markets, raw_count
 
     except httpx.HTTPError as e:
         print(f"❌ HTTP error fetching page at offset {offset}: {e}")
-        return []
+        return [], 0
     except json.JSONDecodeError as e:
         print(f"❌ Invalid JSON response at offset {offset}: {e}")
-        return []
+        return [], 0
     except Exception as e:
         print(f"❌ Unexpected error fetching page at offset {offset}: {e}")
-        return []
+        return [], 0
 
 async def fetch_all_markets_async() -> list[dict[str, Any]]:
     """Fetch all active markets from Polymarket API using async parallel requests"""
@@ -160,16 +169,16 @@ async def fetch_all_markets_async() -> list[dict[str, Any]]:
 
     async with httpx.AsyncClient() as client:
         # First, fetch the first page to see how many markets we need
-        first_page = await fetch_page(client, 0, limit)
+        first_page, first_page_raw_count = await fetch_page(client, 0, limit)
 
-        if not first_page:
+        if not first_page and first_page_raw_count == 0:
             return []
 
         all_markets = first_page
-        print(f"  📊 Fetched first page: {len(first_page)} markets")
+        print(f"  📊 Fetched first page: {len(first_page)} valid markets ({first_page_raw_count} returned by API)")
 
-        # If we got close to a full page (accounting for validation errors), there might be more
-        if len(first_page) >= limit - 10:
+        # If API returned a full page (100 markets), there might be more pages
+        if first_page_raw_count == limit:
             # Create tasks for remaining pages (up to safety limit)
             tasks = []
             for offset in range(limit, safety_limit + 1, limit):
@@ -179,12 +188,12 @@ async def fetch_all_markets_async() -> list[dict[str, Any]]:
             results = await asyncio.gather(*tasks)
 
             # Collect all results
-            for i, page_markets in enumerate(results):
-                if page_markets:
+            for i, (page_markets, page_raw_count) in enumerate(results):
+                if page_raw_count > 0:
                     all_markets.extend(page_markets)
-                    print(f"  📊 Fetched page {i+2}: {len(page_markets)} markets (total: {len(all_markets)})")
-                    # Stop if we got less than a full page
-                    if len(page_markets) < limit:
+                    print(f"  📊 Fetched page {i+2}: {len(page_markets)} valid markets ({page_raw_count} from API, total: {len(all_markets)} valid)")
+                    # Stop if API returned less than a full page
+                    if page_raw_count < limit:
                         break
                 else:
                     break
