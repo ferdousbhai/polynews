@@ -30,59 +30,27 @@ jobs:
     - name: Install dependencies
       run: uv sync --frozen
 
-    - name: Restore previous data
+    - name: Restore SQLite database cache
+      uses: actions/cache/restore@v4
+      with:
+        path: markets.db
+        key: markets-db-${{ github.run_id }}
+        restore-keys: |
+          markets-db-
+
+    - name: Restore previous markets.json
       continue-on-error: true
       run: |
-        # Download data/markets.json and history snapshots from GitHub Pages
-        # This allows script to reuse cached statements and calculate price changes
-        mkdir -p data/history
+        # Download markets.json from GitHub Pages for statement caching
         BASE_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
 
-        echo "⏳ Downloading previous data from GitHub Pages..."
-
-        # Download main markets.json for statement caching
-        if curl -fsSL "$BASE_URL/data/markets.json" -o data/markets.json; then
-          MARKET_COUNT=$(grep -c '"question"' data/markets.json || echo "unknown")
+        echo "⏳ Downloading previous markets.json from GitHub Pages..."
+        if curl -fsSL "$BASE_URL/markets.json" -o markets.json 2>/dev/null; then
+          MARKET_COUNT=$(grep -c '"question"' markets.json || echo "unknown")
           echo "✅ Restored markets.json ($MARKET_COUNT markets)"
+          echo "💡 Script will reuse statements for unchanged markets (saves LLM costs)"
         else
-          echo "⚠️  No previous markets.json found"
-        fi
-
-        # Download history snapshots for price changes (1h, 24h, 7d ago)
-        # Script needs 3 snapshots within: 55-65min, 23-25h, 6.5-7.5d ago
-        echo ""
-        echo "⏳ Downloading history snapshots for price changes..."
-
-        # Try to download snapshots at target times (workflows run every 15min)
-        for TARGET in "1hour:60" "24hours:1440" "7days:10080"; do
-          LABEL=${TARGET%:*}
-          MINS=${TARGET#*:}
-          FOUND_SNAPSHOT=false
-
-          # Try ±45min window around target (every 15min)
-          for OFFSET in 0 -15 15 -30 30 -45 45; do
-            TOTAL_MINS=$((MINS + OFFSET))
-            TIMESTAMP=$(date -u -d "$TOTAL_MINS minutes ago" +%Y-%m-%d_%H-%M 2>/dev/null || date -u -v-${TOTAL_MINS}M +%Y-%m-%d_%H-%M)
-            FILE="$TIMESTAMP.json"
-
-            if curl -fsSL "$BASE_URL/data/history/$FILE" -o "data/history/$FILE" 2>/dev/null; then
-              echo "  ✅ $LABEL: $FILE"
-              FOUND_SNAPSHOT=true
-              break
-            fi
-          done
-
-          if [ "$FOUND_SNAPSHOT" = false ]; then
-            echo "  ❌ $LABEL: No snapshot found in ±45min window"
-          fi
-        done
-
-        FOUND=$(ls -1 data/history/*.json 2>/dev/null | wc -l)
-        echo ""
-        if [ "$FOUND" -eq 3 ]; then
-          echo "✅ Downloaded 3/3 snapshots - price changes will calculate correctly"
-        else
-          echo "⚠️  Downloaded $FOUND/3 snapshots - some price changes will be null"
+          echo "⚠️  No previous markets.json found (first run)"
         fi
 
     - name: Fetch market data
@@ -90,53 +58,34 @@ jobs:
         GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
       run: uv run python scripts/fetch_markets.py
 
+    - name: Save SQLite database cache
+      uses: actions/cache/save@v4
+      if: always()
+      with:
+        path: markets.db
+        key: markets-db-${{ github.run_id }}
+
     - name: Prepare deployment files
       run: |
         mkdir -p _site
 
-        # Debug: Show what's in data/ before copying
-        echo "📦 Files in data/ before copying:"
-        ls -lah data/ || echo "  (data/ doesn't exist)"
-        echo ""
-        echo "📦 Files in data/history/ before copying:"
-        ls -lah data/history/ || echo "  (data/history/ doesn't exist)"
-        echo ""
+        # Copy web files and markets.json (DB stays in cache, not deployed)
+        cp -r *.html *.css *.js markets.json _site/ 2>/dev/null || true
 
-        cp -r *.html *.css *.js data/ _site/ 2>/dev/null || true
         # Copy any other web assets if they exist
         [ -d assets ] && cp -r assets _site/ || true
         [ -d images ] && cp -r images _site/ || true
-        # Create empty .gitignore in _site to prevent root .gitignore from blocking data/
-        echo "# Allow all files in deployment artifact" > _site/.gitignore
 
-        # Debug: Show what ended up in _site/
-        echo "📦 Files in _site/data/:"
-        ls -lah _site/data/ || echo "  (_site/data/ doesn't exist)"
+        echo "📦 Deployment contents:"
+        ls -lah _site/
         echo ""
-        echo "📦 Files in _site/data/history/:"
-        ls -lah _site/data/history/ || echo "  (_site/data/history/ doesn't exist)"
-        echo ""
-        echo "📊 Total files being uploaded:"
-        find _site -type f | wc -l
         echo "📊 Artifact size:"
         du -sh _site
 
     - name: Upload GitHub Pages artifact
-      run: |
-        # Temporarily rename .gitignore so upload-artifact doesn't exclude data/
-        mv .gitignore .gitignore.bak
-        echo "Disabled .gitignore for artifact upload"
-      shell: bash
-
-    - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
       with:
         path: _site
-
-    - name: Restore .gitignore
-      if: always()
-      run: mv .gitignore.bak .gitignore
-      shell: bash
 
   deploy:
     needs: fetch-data

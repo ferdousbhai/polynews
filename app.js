@@ -221,7 +221,7 @@ function formatChange(change, period) {
 }
 
 async function fetchMarketsData() {
-    const response = await fetch(`data/markets.json?t=${Date.now()}`);
+    const response = await fetch(`markets.json?t=${Date.now()}`);
     if (!response.ok) {
         throw new Error(`Failed to load data: ${response.status}`);
     }

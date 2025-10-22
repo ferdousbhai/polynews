@@ -1,12 +1,13 @@
 import json
 import httpx
 import asyncio
+import sqlite3
 from datetime import datetime, timedelta, UTC
 from typing import Union, Any
 import os
 from pathlib import Path
 from google import genai
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, ValidationError, ConfigDict
 from decimal import Decimal
 
 # Load environment variables (only for local development)
@@ -17,17 +18,90 @@ except ImportError:
     pass  # python-dotenv not installed (e.g., in GitHub Actions)
 
 API_URL = "https://gamma-api.polymarket.com/markets"
-OUTPUT_FILE = "data/markets.json"
-HISTORY_DIR = "data/history"
+OUTPUT_FILE = "markets.json"
+DB_FILE = "markets.db"
 TIME_WINDOW = timedelta(days=90)
 
-def ensure_directories() -> None:
-    """Create necessary directories"""
-    Path("data").mkdir(exist_ok=True)
-    Path(HISTORY_DIR).mkdir(exist_ok=True)
+# Pydantic models for API validation
+class PolymarketEvent(BaseModel):
+    """Event information from Polymarket API"""
+    model_config = ConfigDict(extra="allow")  # Allow additional fields from API
+
+    slug: str | None = None
+    # Other fields exist but we only need slug
+
+class PolymarketMarket(BaseModel):
+    """Market data structure from Polymarket API"""
+    model_config = ConfigDict(extra="allow")  # Allow additional fields from API that we don't explicitly need
+
+    id: str
+    question: str
+    endDateIso: str
+    active: bool
+    closed: bool
+    archived: bool | None = None
+    volume: str | float
+    liquidity: str | float | None = None
+    outcomePrices: list[str] | str
+    outcomes: list[str] | str
+    negRiskMarketID: str | None = None
+    events: list[dict[str, Any]] | None = None
+    slug: str | None = None
+    description: str | None = None
+
+    @field_validator('outcomePrices', 'outcomes', mode='before')
+    @classmethod
+    def parse_json_strings(cls, v: Any) -> list[str]:
+        """Parse JSON strings to lists"""
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                if not isinstance(parsed, list):
+                    raise ValueError("Must be a list")
+                return parsed
+            except json.JSONDecodeError:
+                raise ValueError("Invalid JSON string")
+        if isinstance(v, list):
+            return v
+        raise ValueError("Must be a list or JSON string")
+
+    @field_validator('volume', mode='before')
+    @classmethod
+    def validate_volume(cls, v: Any) -> str | float:
+        """Ensure volume is a valid number"""
+        if isinstance(v, (str, int, float)):
+            try:
+                float(v)
+                return v
+            except (ValueError, TypeError):
+                return "0"
+        return "0"
+
+def init_database() -> None:
+    """Initialize SQLite database for history snapshots"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    # Create snapshots table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS snapshots (
+            timestamp TEXT PRIMARY KEY,
+            markets_json TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Create index for faster timestamp queries
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_timestamp ON snapshots(timestamp)
+    ''')
+
+    conn.commit()
+    conn.close()
+    print(f"📊 Database initialized: {DB_FILE}")
 
 async def fetch_page(client: httpx.AsyncClient, offset: int, limit: int) -> list[dict[str, Any]]:
-    """Fetch a single page of markets"""
+    """Fetch a single page of markets with validation"""
     params = {
         'limit': limit,
         'offset': offset,
@@ -39,9 +113,42 @@ async def fetch_page(client: httpx.AsyncClient, offset: int, limit: int) -> list
     try:
         response = await client.get(API_URL, params=params, timeout=30)
         response.raise_for_status()
-        return response.json()
+        raw_data = response.json()
+
+        # Validate each market with Pydantic
+        validated_markets = []
+        validation_errors = 0
+
+        for i, market_data in enumerate(raw_data):
+            try:
+                # Validate market structure
+                validated_market = PolymarketMarket(**market_data)
+                # Convert back to dict for downstream processing
+                validated_markets.append(validated_market.model_dump())
+            except ValidationError as e:
+                validation_errors += 1
+                if validation_errors <= 3:  # Only print first 3 errors to avoid spam
+                    print(f"  ⚠️  Validation error for market at index {i + offset}: {e.error_count()} field(s) invalid")
+                    print(f"      Market ID: {market_data.get('id', 'unknown')}, Question: {market_data.get('question', 'unknown')[:60]}")
+                # Skip invalid markets
+                continue
+
+        if validation_errors > 3:
+            print(f"  ⚠️  ... and {validation_errors - 3} more validation errors")
+
+        if validation_errors > 0:
+            print(f"  ✓ Validated {len(validated_markets)}/{len(raw_data)} markets from offset {offset} (skipped {validation_errors} invalid)")
+
+        return validated_markets
+
     except httpx.HTTPError as e:
-        print(f"❌ Error fetching page at offset {offset}: {e}")
+        print(f"❌ HTTP error fetching page at offset {offset}: {e}")
+        return []
+    except json.JSONDecodeError as e:
+        print(f"❌ Invalid JSON response at offset {offset}: {e}")
+        return []
+    except Exception as e:
+        print(f"❌ Unexpected error fetching page at offset {offset}: {e}")
         return []
 
 async def fetch_all_markets_async() -> list[dict[str, Any]]:
@@ -89,74 +196,62 @@ def fetch_all_markets() -> list[dict[str, Any]]:
     return asyncio.run(fetch_all_markets_async())
 
 def load_historical_snapshots() -> dict[str, str | dict[str, Any] | None]:
-    """Load recent historical snapshots for price change calculation"""
+    """Load recent historical snapshots from SQLite database"""
     snapshots: dict[str, str | dict[str, Any] | None] = {
         'hour1': None,
         'hours24': None,
         'days7': None
     }
 
-    now = datetime.now(UTC)
-
-    # Get all history files
-    history_files = []
-    if os.path.exists(HISTORY_DIR):
-        history_files = sorted([f for f in os.listdir(HISTORY_DIR) if f.endswith('.json')])
-
-    if not history_files:
+    if not os.path.exists(DB_FILE):
         return snapshots
 
-    # Find closest snapshots for each time period
-    for filename in reversed(history_files):
+    now = datetime.now(UTC)
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    # Define time windows for each period
+    time_windows = {
+        'hour1': (timedelta(minutes=55), timedelta(minutes=65)),
+        'hours24': (timedelta(hours=23), timedelta(hours=25)),
+        'days7': (timedelta(days=6.5), timedelta(days=7.5))
+    }
+
+    # Query all snapshots ordered by timestamp descending
+    cursor.execute('SELECT timestamp, markets_json FROM snapshots ORDER BY timestamp DESC')
+    rows = cursor.fetchall()
+
+    for timestamp_str, markets_json in rows:
         try:
-            # Parse timestamp from filename: YYYY-MM-DD_HH-MM.json
-            timestamp_str = filename.replace('.json', '')
-            file_time = datetime.strptime(timestamp_str, '%Y-%m-%d_%H-%M').replace(tzinfo=UTC)
-            time_diff = now - file_time
+            # Parse timestamp
+            snapshot_time = datetime.strptime(timestamp_str, '%Y-%m-%d_%H-%M').replace(tzinfo=UTC)
+            time_diff = now - snapshot_time
 
-            # 1 hour snapshot (55-65 minutes ago)
-            if snapshots['hour1'] is None and timedelta(minutes=55) <= time_diff <= timedelta(minutes=65):
-                snapshots['hour1'] = filename
+            # Check each period
+            for period, (min_diff, max_diff) in time_windows.items():
+                if snapshots[period] is None and min_diff <= time_diff <= max_diff:
+                    # Parse markets and index by ID
+                    markets_list = json.loads(markets_json)
+                    indexed_markets = {
+                        m.get('id'): m
+                        for m in markets_list
+                        if m.get('id')
+                    }
 
-            # 24 hour snapshot (23-25 hours ago)
-            if snapshots['hours24'] is None and timedelta(hours=23) <= time_diff <= timedelta(hours=25):
-                snapshots['hours24'] = filename
-
-            # 7 day snapshot (6.5-7.5 days ago)
-            if snapshots['days7'] is None and timedelta(days=6.5) <= time_diff <= timedelta(days=7.5):
-                snapshots['days7'] = filename
+                    snapshots[period] = {
+                        'timestamp': timestamp_str,
+                        'markets': indexed_markets
+                    }
+                    print(f"  📈 Loaded {period} snapshot from DB: {timestamp_str} ({len(indexed_markets)} markets)")
 
             # Stop if we have all snapshots
             if all(snapshots.values()):
                 break
-        except ValueError:
+
+        except (ValueError, json.JSONDecodeError) as e:
             continue
 
-    # Load the snapshot data and index by market ID for O(1) lookups
-    for period, filename in snapshots.items():
-        if filename and isinstance(filename, str):
-            try:
-                with open(os.path.join(HISTORY_DIR, filename), 'r') as f:
-                    snapshot_data = json.load(f)
-
-                    # Index markets by ID for fast lookups
-                    if snapshot_data.get('markets'):
-                        indexed_markets = {
-                            m.get('id'): m
-                            for m in snapshot_data['markets']
-                            if m.get('id')
-                        }
-                        snapshots[period] = {
-                            'timestamp': snapshot_data.get('timestamp'),
-                            'markets': indexed_markets  # Now a dict instead of list
-                        }
-                        print(f"  📈 Loaded {period} snapshot: {filename} ({len(indexed_markets)} markets)")
-                    else:
-                        snapshots[period] = None
-            except Exception as e:
-                print(f"  ⚠️  Could not load {filename}: {e}")
-                snapshots[period] = None
-
+    conn.close()
     return snapshots
 
 def get_most_likely_outcome(market: dict[str, Any]) -> tuple[str | None, float | None]:
@@ -565,51 +660,52 @@ def save_markets(markets: list[dict[str, Any]]) -> None:
     print(f"✅ Saved {len(markets)} markets to {OUTPUT_FILE}")
 
 def save_historical_snapshot(markets: list[dict[str, Any]]) -> None:
-    """Save a snapshot for historical price tracking"""
+    """Save a snapshot to SQLite database"""
     timestamp = datetime.now(UTC).strftime('%Y-%m-%d_%H-%M')
-    snapshot_file = os.path.join(HISTORY_DIR, f'{timestamp}.json')
 
-    # Save full market data for historical reference
-    snapshot_data = {
-        'timestamp': datetime.now(UTC).isoformat().replace('+00:00', 'Z'),
-        'markets': markets
-    }
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
 
-    with open(snapshot_file, 'w') as f:
-        json.dump(snapshot_data, f, cls=DecimalEncoder)
+    # Save markets as JSON string
+    markets_json = json.dumps(markets, cls=DecimalEncoder)
 
-    print(f"📸 Saved historical snapshot: {snapshot_file}")
+    # Insert or replace snapshot
+    cursor.execute('''
+        INSERT OR REPLACE INTO snapshots (timestamp, markets_json)
+        VALUES (?, ?)
+    ''', (timestamp, markets_json))
+
+    conn.commit()
+    conn.close()
+
+    print(f"📸 Saved historical snapshot to DB: {timestamp}")
 
     # Clean up old snapshots
     cleanup_old_snapshots()
 
 def cleanup_old_snapshots() -> None:
-    """Remove snapshots older than 30 days"""
-    if not os.path.exists(HISTORY_DIR):
+    """Remove snapshots older than 30 days from database"""
+    if not os.path.exists(DB_FILE):
         return
 
     cutoff_date = datetime.now(UTC) - timedelta(days=30)
-    removed_count = 0
+    cutoff_timestamp = cutoff_date.strftime('%Y-%m-%d_%H-%M')
 
-    for filename in os.listdir(HISTORY_DIR):
-        if not filename.endswith('.json'):
-            continue
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
 
-        try:
-            timestamp_str = filename.replace('.json', '')
-            file_time = datetime.strptime(timestamp_str, '%Y-%m-%d_%H-%M').replace(tzinfo=UTC)
+    # Delete old snapshots
+    cursor.execute('DELETE FROM snapshots WHERE timestamp < ?', (cutoff_timestamp,))
+    removed_count = cursor.rowcount
 
-            if file_time < cutoff_date:
-                os.remove(os.path.join(HISTORY_DIR, filename))
-                removed_count += 1
-        except (ValueError, OSError):
-            continue
+    conn.commit()
+    conn.close()
 
     if removed_count > 0:
-        print(f"🧹 Cleaned up {removed_count} old snapshots")
+        print(f"🧹 Cleaned up {removed_count} old snapshots from DB")
 
 def main() -> None:
-    ensure_directories()
+    init_database()
 
     # Fetch all markets
     all_markets = fetch_all_markets()
