@@ -42,7 +42,7 @@ jobs:
 
         # Download main markets.json for statement caching
         if curl -fsSL "$BASE_URL/data/markets.json" -o data/markets.json; then
-          MARKET_COUNT=$(grep -o '"id"' data/markets.json | wc -l)
+          MARKET_COUNT=$(grep -c '"question"' data/markets.json || echo "unknown")
           echo "✅ Restored markets.json ($MARKET_COUNT markets)"
         else
           echo "⚠️  No previous markets.json found"
@@ -50,12 +50,14 @@ jobs:
 
         # Download history snapshots for price changes (1h, 24h, 7d ago)
         # Script needs 3 snapshots within: 55-65min, 23-25h, 6.5-7.5d ago
+        echo ""
         echo "⏳ Downloading history snapshots for price changes..."
 
         # Try to download snapshots at target times (workflows run every 15min)
         for TARGET in "1hour:60" "24hours:1440" "7days:10080"; do
           LABEL=${TARGET%:*}
           MINS=${TARGET#*:}
+          FOUND_SNAPSHOT=false
 
           # Try ±45min window around target (every 15min)
           for OFFSET in 0 -15 15 -30 30 -45 45; do
@@ -65,13 +67,23 @@ jobs:
 
             if curl -fsSL "$BASE_URL/data/history/$FILE" -o "data/history/$FILE" 2>/dev/null; then
               echo "  ✅ $LABEL: $FILE"
+              FOUND_SNAPSHOT=true
               break
             fi
           done
+
+          if [ "$FOUND_SNAPSHOT" = false ]; then
+            echo "  ❌ $LABEL: No snapshot found in ±45min window"
+          fi
         done
 
         FOUND=$(ls -1 data/history/*.json 2>/dev/null | wc -l)
-        echo "📊 Downloaded $FOUND/3 snapshots (1h/24h/7d for price change calculations)"
+        echo ""
+        if [ "$FOUND" -eq 3 ]; then
+          echo "✅ Downloaded 3/3 snapshots - price changes will calculate correctly"
+        else
+          echo "⚠️  Downloaded $FOUND/3 snapshots - some price changes will be null"
+        fi
 
     - name: Fetch market data
       env:
