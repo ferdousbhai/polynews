@@ -168,8 +168,8 @@ async def fetch_all_markets_async() -> list[dict[str, Any]]:
         all_markets = first_page
         print(f"  📊 Fetched first page: {len(first_page)} markets")
 
-        # If we got a full page, there might be more
-        if len(first_page) == limit:
+        # If we got close to a full page (accounting for validation errors), there might be more
+        if len(first_page) >= limit - 10:
             # Create tasks for remaining pages (up to safety limit)
             tasks = []
             for offset in range(limit, safety_limit + 1, limit):
