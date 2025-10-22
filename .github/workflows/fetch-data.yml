@@ -93,12 +93,33 @@ jobs:
     - name: Prepare deployment files
       run: |
         mkdir -p _site
+
+        # Debug: Show what's in data/ before copying
+        echo "📦 Files in data/ before copying:"
+        ls -lah data/ || echo "  (data/ doesn't exist)"
+        echo ""
+        echo "📦 Files in data/history/ before copying:"
+        ls -lah data/history/ || echo "  (data/history/ doesn't exist)"
+        echo ""
+
         cp -r *.html *.css *.js data/ _site/ 2>/dev/null || true
         # Copy any other web assets if they exist
         [ -d assets ] && cp -r assets _site/ || true
         [ -d images ] && cp -r images _site/ || true
         # Create empty .gitignore in _site to prevent root .gitignore from blocking data/
         echo "# Allow all files in deployment artifact" > _site/.gitignore
+
+        # Debug: Show what ended up in _site/
+        echo "📦 Files in _site/data/:"
+        ls -lah _site/data/ || echo "  (_site/data/ doesn't exist)"
+        echo ""
+        echo "📦 Files in _site/data/history/:"
+        ls -lah _site/data/history/ || echo "  (_site/data/history/ doesn't exist)"
+        echo ""
+        echo "📊 Total files being uploaded:"
+        find _site -type f | wc -l
+        echo "📊 Artifact size:"
+        du -sh _site
 
     - name: Upload GitHub Pages artifact
       uses: actions/upload-pages-artifact@v3
