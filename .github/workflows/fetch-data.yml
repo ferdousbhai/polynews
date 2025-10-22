@@ -21,8 +21,6 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # Fetch all history for proper git operations
 
     - name: Install uv
       uses: astral-sh/setup-uv@v7
@@ -35,19 +33,17 @@ jobs:
     - name: Restore previous data
       continue-on-error: true
       run: |
-        # Download the current GitHub Pages deployment to get previous data
-        # This allows us to reuse existing statements/categories for unchanged markets
-        curl -sL "${{ github.event.repository.html_url }}" -o index.html.tmp || true
-        if [ -f index.html.tmp ]; then
-          # Extract the deployed site URL and download data/markets.json
-          mkdir -p data
-          curl -sL "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/data/markets.json" -o data/markets.json 2>/dev/null || true
-          if [ -f data/markets.json ]; then
-            echo "✅ Restored previous markets.json ($(wc -l < data/markets.json) lines)"
-          else
-            echo "⚠️  No previous markets.json found (first run or deployment issue)"
-          fi
-          rm -f index.html.tmp
+        # Download data/markets.json from current GitHub Pages deployment
+        # This allows script to reuse cached statements for unchanged markets
+        mkdir -p data
+        echo "⏳ Downloading previous markets.json from GitHub Pages..."
+        if curl -fsSL "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/data/markets.json" -o data/markets.json; then
+          MARKET_COUNT=$(grep -o '"id"' data/markets.json | wc -l)
+          echo "✅ Restored previous markets.json ($MARKET_COUNT markets)"
+          echo "💡 Script will reuse statements for unchanged markets (saves ~\$0.20 in LLM costs)"
+        else
+          echo "⚠️  No previous markets.json found (first run or Pages not deployed yet)"
+          echo "   First run will generate all statements with LLM (~356 markets)"
         fi
 
     - name: Fetch market data
