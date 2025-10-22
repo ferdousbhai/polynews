@@ -40,16 +40,18 @@ jobs:
         GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
       run: uv run python scripts/fetch_markets.py
 
+    - name: Prepare deployment files
+      run: |
+        mkdir -p _site
+        cp -r *.html *.css *.js data/ _site/ 2>/dev/null || true
+        # Copy any other web assets if they exist
+        [ -d assets ] && cp -r assets _site/ || true
+        [ -d images ] && cp -r images _site/ || true
+
     - name: Upload GitHub Pages artifact
       uses: actions/upload-pages-artifact@v3
       with:
-        path: |
-          .
-          !.github
-          !scripts
-          !pyproject.toml
-          !uv.lock
-          !README.md
+        path: _site
 
   deploy:
     needs: fetch-data
