@@ -122,9 +122,21 @@ jobs:
         du -sh _site
 
     - name: Upload GitHub Pages artifact
+      run: |
+        # Temporarily rename .gitignore so upload-artifact doesn't exclude data/
+        mv .gitignore .gitignore.bak
+        echo "Disabled .gitignore for artifact upload"
+      shell: bash
+
+    - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
       with:
         path: _site
+
+    - name: Restore .gitignore
+      if: always()
+      run: mv .gitignore.bak .gitignore
+      shell: bash
 
   deploy:
     needs: fetch-data
