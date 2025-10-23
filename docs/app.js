@@ -6,10 +6,10 @@ function initTheme() {
 
     if (savedTheme === 'light') {
         document.body.classList.add('light-mode');
-        if (themeToggle) themeToggle.textContent = '☀️';
+        if (themeToggle) themeToggle.textContent = '🌙'; // Show moon in light mode (click to get dark)
     } else {
         document.body.classList.remove('light-mode');
-        if (themeToggle) themeToggle.textContent = '🌙';
+        if (themeToggle) themeToggle.textContent = '☀️'; // Show sun in dark mode (click to get light)
     }
 }
 
@@ -18,10 +18,10 @@ function toggleTheme() {
     const themeToggle = document.getElementById('themeToggle');
 
     if (isLightMode) {
-        themeToggle.textContent = '☀️';
+        themeToggle.textContent = '🌙'; // Show moon in light mode (click to get dark)
         localStorage.setItem('theme', 'light');
     } else {
-        themeToggle.textContent = '🌙';
+        themeToggle.textContent = '☀️'; // Show sun in dark mode (click to get light)
         localStorage.setItem('theme', 'dark');
     }
 }
@@ -295,7 +295,7 @@ function createMarketCard(market) {
     `;
 
     const odds = calculateOdds(displayProbability);
-    const oddsHtml = odds ? `<span class="odds-separator">vs</span><span class="odds-value">${odds}x</span>` : '';
+    const oddsTooltip = odds ? `<div class="odds-tooltip">${odds}x payout on No</div>` : '';
 
     // Use event slug if available (correct Polymarket URL format), otherwise fall back to market slug
     const url = market.eventSlug
@@ -330,8 +330,10 @@ function createMarketCard(market) {
             <div class="probability-section">
                 <div class="probability-header">
                     <div class="probability-main">
-                        <span class="probability-value">${displayProbability}%</span>
-                        ${oddsHtml}
+                        <div class="probability-wrapper">
+                            <span class="probability-value">${displayProbability}%</span>
+                            ${oddsTooltip}
+                        </div>
                     </div>
                     <div class="probability-changes">
                         ${changesHtml}

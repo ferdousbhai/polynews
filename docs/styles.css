@@ -233,26 +233,41 @@ h1 {
     gap: 8px;
 }
 
+.probability-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
 .probability-value {
     font-size: 1.5rem;
     font-weight: 600;
     color: var(--text-primary);
+    cursor: help;
 }
 
-.odds-separator {
-    font-size: 0.875rem;
+.odds-tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
     font-weight: 500;
-    color: var(--text-tertiary);
-    margin: 0 4px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    pointer-events: none;
+    z-index: 10;
 }
 
-.odds-value {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    background: var(--badge-bg);
-    padding: 4px 8px;
-    border-radius: 4px;
+.probability-wrapper:hover .odds-tooltip {
+    opacity: 1;
+    visibility: visible;
 }
 
 .probability-label {
