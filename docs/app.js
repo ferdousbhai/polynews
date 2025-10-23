@@ -1,3 +1,38 @@
+// Theme management
+function initTheme() {
+    // Default to dark mode
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    const themeToggle = document.getElementById('themeToggle');
+
+    if (savedTheme === 'light') {
+        document.body.classList.add('light-mode');
+        if (themeToggle) themeToggle.textContent = '☀️';
+    } else {
+        document.body.classList.remove('light-mode');
+        if (themeToggle) themeToggle.textContent = '🌙';
+    }
+}
+
+function toggleTheme() {
+    const isLightMode = document.body.classList.toggle('light-mode');
+    const themeToggle = document.getElementById('themeToggle');
+
+    if (isLightMode) {
+        themeToggle.textContent = '☀️';
+        localStorage.setItem('theme', 'light');
+    } else {
+        themeToggle.textContent = '🌙';
+        localStorage.setItem('theme', 'dark');
+    }
+}
+
+// Initialize theme when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTheme);
+} else {
+    initTheme();
+}
+
 let allMarkets = [];
 let selectedCategories = new Set();
 let currentLastUpdated = null;
@@ -121,6 +156,10 @@ function renderMarkets() {
     filteredMarkets.sort((a, b) => {
         if (currentSortOrder === 'volume') {
             return (b.volume || 0) - (a.volume || 0);
+        } else if (currentSortOrder === 'daysLeft') {
+            const daysA = getDaysRemaining(a.endDateIso);
+            const daysB = getDaysRemaining(b.endDateIso);
+            return daysA - daysB; // Ascending order - soonest first
         } else if (currentSortOrder === 'change1h') {
             const changeA = a.priceChanges?.hour1 || 0;
             const changeB = b.priceChanges?.hour1 || 0;
@@ -220,6 +259,17 @@ function formatChange(change, period) {
     return `<span class="change-badge ${className}">${period} ${arrow}${sign}${absChange.toFixed(1)}%</span>`;
 }
 
+function calculateOdds(probability) {
+    // Calculate decimal odds for the opposite side
+    // If showing 65% Yes, the No side has 35% probability
+    // Decimal odds = 100 / probability
+    const oppositeProbability = 100 - probability;
+    if (oppositeProbability <= 0 || oppositeProbability >= 100) {
+        return null;
+    }
+    return (100 / oppositeProbability).toFixed(2);
+}
+
 async function fetchMarketsData() {
     const response = await fetch(`markets.json?t=${Date.now()}`);
     if (!response.ok) {
@@ -243,6 +293,9 @@ function createMarketCard(market) {
         ${formatChange(changes.hours24, '24H')}
         ${formatChange(changes.days7, '7D')}
     `;
+
+    const odds = calculateOdds(displayProbability);
+    const oddsHtml = odds ? `<span class="odds-separator">vs</span><span class="odds-value">${odds}x</span>` : '';
 
     // Use event slug if available (correct Polymarket URL format), otherwise fall back to market slug
     const url = market.eventSlug
@@ -278,6 +331,7 @@ function createMarketCard(market) {
                 <div class="probability-header">
                     <div class="probability-main">
                         <span class="probability-value">${displayProbability}%</span>
+                        ${oddsHtml}
                     </div>
                     <div class="probability-changes">
                         ${changesHtml}
