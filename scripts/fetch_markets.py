@@ -205,7 +205,13 @@ def fetch_all_markets() -> list[dict[str, Any]]:
     return asyncio.run(fetch_all_markets_async())
 
 def load_historical_snapshots() -> dict[str, str | dict[str, Any] | None]:
-    """Load recent historical snapshots from SQLite database"""
+    """Load recent historical snapshots from SQLite database
+
+    For each period, takes the LATEST snapshot that's at least that old:
+    - hour1: Latest snapshot >= 60 minutes old
+    - hours24: Latest snapshot >= 24 hours old
+    - days7: Latest snapshot >= 7 days old
+    """
     snapshots: dict[str, str | dict[str, Any] | None] = {
         'hour1': None,
         'hours24': None,
@@ -225,14 +231,14 @@ def load_historical_snapshots() -> dict[str, str | dict[str, Any] | None]:
     total_snapshots = cursor.fetchone()[0]
     print(f"  📊 Found {total_snapshots} total snapshots in database")
 
-    # Define time windows for each period
-    time_windows = {
-        'hour1': (timedelta(minutes=55), timedelta(minutes=65)),
-        'hours24': (timedelta(hours=23), timedelta(hours=25)),
-        'days7': (timedelta(days=6.5), timedelta(days=7.5))
+    # Define minimum age for each period
+    min_ages = {
+        'hour1': timedelta(hours=1),
+        'hours24': timedelta(hours=24),
+        'days7': timedelta(days=7)
     }
 
-    # Query all snapshots ordered by timestamp descending
+    # Query all snapshots ordered by timestamp descending (newest first)
     cursor.execute('SELECT timestamp, markets_json FROM snapshots ORDER BY timestamp DESC')
     rows = cursor.fetchall()
 
@@ -241,15 +247,17 @@ def load_historical_snapshots() -> dict[str, str | dict[str, Any] | None]:
         recent_timestamps = [row[0] for row in rows[:5]]
         print(f"  🕐 Most recent snapshots: {', '.join(recent_timestamps)}")
 
+    # For each snapshot (newest first), check if it's old enough for any period
     for timestamp_str, markets_json in rows:
         try:
             # Parse timestamp
             snapshot_time = datetime.strptime(timestamp_str, '%Y-%m-%d_%H-%M').replace(tzinfo=UTC)
-            time_diff = now - snapshot_time
+            age = now - snapshot_time
 
-            # Check each period
-            for period, (min_diff, max_diff) in time_windows.items():
-                if snapshots[period] is None and min_diff <= time_diff <= max_diff:
+            # Check each period to see if this snapshot is old enough
+            for period, min_age in min_ages.items():
+                # If we haven't found a snapshot for this period yet, and this one is old enough
+                if snapshots[period] is None and age >= min_age:
                     # Parse markets and index by ID
                     markets_list = json.loads(markets_json)
                     indexed_markets = {
@@ -262,7 +270,17 @@ def load_historical_snapshots() -> dict[str, str | dict[str, Any] | None]:
                         'timestamp': timestamp_str,
                         'markets': indexed_markets
                     }
-                    print(f"  📈 Loaded {period} snapshot from DB: {timestamp_str} ({len(indexed_markets)} markets)")
+
+                    # Format age for display
+                    hours = age.total_seconds() / 3600
+                    if hours < 2:
+                        age_str = f"{int(age.total_seconds() / 60)}min"
+                    elif hours < 48:
+                        age_str = f"{hours:.1f}hr"
+                    else:
+                        age_str = f"{hours/24:.1f}d"
+
+                    print(f"  📈 Loaded {period} snapshot: {timestamp_str} ({age_str} ago, {len(indexed_markets)} markets)")
 
             # Stop if we have all snapshots
             if all(snapshots.values()):
@@ -277,8 +295,15 @@ def load_historical_snapshots() -> dict[str, str | dict[str, Any] | None]:
     missing = [period for period, data in snapshots.items() if data is None]
     if missing:
         print(f"  ⚠️  Missing snapshots for: {', '.join(missing)}")
-        if total_snapshots > 0 and total_snapshots < 10:
-            print(f"  💡 Need more runs to accumulate history (have {total_snapshots}, runs every 15min)")
+        if total_snapshots > 0:
+            # Calculate how much history we have
+            history_hours = total_snapshots * 0.25  # Assuming ~15min between snapshots
+            if 'hour1' in missing and history_hours < 1:
+                print(f"  💡 Need ~4 runs for 1hr history (have {total_snapshots} snapshots = {history_hours:.1f}hr)")
+            elif 'hours24' in missing and history_hours < 24:
+                print(f"  💡 Need ~96 runs for 24hr history (have {total_snapshots} snapshots = {history_hours:.1f}hr)")
+            elif 'days7' in missing and history_hours < 168:
+                print(f"  💡 Need ~672 runs for 7d history (have {total_snapshots} snapshots = {history_hours/24:.1f} days)")
 
     return snapshots
 
