@@ -213,11 +213,17 @@ def load_historical_snapshots() -> dict[str, str | dict[str, Any] | None]:
     }
 
     if not os.path.exists(DB_FILE):
+        print("  ⚠️  Database file not found, no historical snapshots available")
         return snapshots
 
     now = datetime.now(UTC)
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
+
+    # Count total snapshots for debugging
+    cursor.execute('SELECT COUNT(*) FROM snapshots')
+    total_snapshots = cursor.fetchone()[0]
+    print(f"  📊 Found {total_snapshots} total snapshots in database")
 
     # Define time windows for each period
     time_windows = {
@@ -229,6 +235,11 @@ def load_historical_snapshots() -> dict[str, str | dict[str, Any] | None]:
     # Query all snapshots ordered by timestamp descending
     cursor.execute('SELECT timestamp, markets_json FROM snapshots ORDER BY timestamp DESC')
     rows = cursor.fetchall()
+
+    # Debug: show recent snapshot timestamps
+    if total_snapshots > 0:
+        recent_timestamps = [row[0] for row in rows[:5]]
+        print(f"  🕐 Most recent snapshots: {', '.join(recent_timestamps)}")
 
     for timestamp_str, markets_json in rows:
         try:
@@ -261,6 +272,14 @@ def load_historical_snapshots() -> dict[str, str | dict[str, Any] | None]:
             continue
 
     conn.close()
+
+    # Debug: report which snapshots are missing
+    missing = [period for period, data in snapshots.items() if data is None]
+    if missing:
+        print(f"  ⚠️  Missing snapshots for: {', '.join(missing)}")
+        if total_snapshots > 0 and total_snapshots < 10:
+            print(f"  💡 Need more runs to accumulate history (have {total_snapshots}, runs every 15min)")
+
     return snapshots
 
 def get_most_likely_outcome(market: dict[str, Any]) -> tuple[str | None, float | None]:
