@@ -82,7 +82,6 @@ def init_database() -> None:
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
-    # Create snapshots table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS snapshots (
             timestamp TEXT PRIMARY KEY,
@@ -91,14 +90,12 @@ def init_database() -> None:
         )
     ''')
 
-    # Create index for faster timestamp queries
     cursor.execute('''
         CREATE INDEX IF NOT EXISTS idx_timestamp ON snapshots(timestamp)
     ''')
 
     conn.commit()
     conn.close()
-    print(f"📊 Database initialized: {DB_FILE}")
 
 async def fetch_page(client: httpx.AsyncClient, offset: int, limit: int) -> tuple[list[dict[str, Any]], int]:
     """Fetch a single page of markets with validation
@@ -132,21 +129,7 @@ async def fetch_page(client: httpx.AsyncClient, offset: int, limit: int) -> tupl
                 validated_markets.append(validated_market.model_dump())
             except ValidationError as e:
                 validation_errors += 1
-                if validation_errors <= 3:  # Only print first 3 errors to avoid spam
-                    print(f"  ⚠️  Validation error for market at index {i + offset}: {e.error_count()} field(s) invalid")
-                    print(f"      Market ID: {market_data.get('id', 'unknown')}, Question: {market_data.get('question', 'unknown')[:60]}")
-                    # Show which fields failed validation
-                    for error in e.errors():
-                        field = '.'.join(str(x) for x in error['loc'])
-                        print(f"      ❌ Field '{field}': {error['msg']}")
-                # Skip invalid markets
                 continue
-
-        if validation_errors > 3:
-            print(f"  ⚠️  ... and {validation_errors - 3} more validation errors")
-
-        if validation_errors > 0:
-            print(f"  ✓ Validated {len(validated_markets)}/{raw_count} markets from offset {offset} (skipped {validation_errors} invalid)")
 
         return validated_markets, raw_count
 
@@ -219,33 +202,23 @@ def load_historical_snapshots() -> dict[str, str | dict[str, Any] | None]:
     }
 
     if not os.path.exists(DB_FILE):
-        print("  ⚠️  Database file not found, no historical snapshots available")
         return snapshots
 
     now = datetime.now(UTC)
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
-    # Count total snapshots for debugging
     cursor.execute('SELECT COUNT(*) FROM snapshots')
     total_snapshots = cursor.fetchone()[0]
-    print(f"  📊 Found {total_snapshots} total snapshots in database")
 
-    # Define minimum age for each period
     min_ages = {
         'hour1': timedelta(hours=1),
         'hours24': timedelta(hours=24),
         'days7': timedelta(days=7)
     }
 
-    # Query all snapshots ordered by timestamp descending (newest first)
     cursor.execute('SELECT timestamp, markets_json FROM snapshots ORDER BY timestamp DESC')
     rows = cursor.fetchall()
-
-    # Debug: show recent snapshot timestamps
-    if total_snapshots > 0:
-        recent_timestamps = [row[0] for row in rows[:5]]
-        print(f"  🕐 Most recent snapshots: {', '.join(recent_timestamps)}")
 
     # For each snapshot (newest first), check if it's old enough for any period
     for timestamp_str, markets_json in rows:
@@ -271,17 +244,6 @@ def load_historical_snapshots() -> dict[str, str | dict[str, Any] | None]:
                         'markets': indexed_markets
                     }
 
-                    # Format age for display
-                    hours = age.total_seconds() / 3600
-                    if hours < 2:
-                        age_str = f"{int(age.total_seconds() / 60)}min"
-                    elif hours < 48:
-                        age_str = f"{hours:.1f}hr"
-                    else:
-                        age_str = f"{hours/24:.1f}d"
-
-                    print(f"  📈 Loaded {period} snapshot: {timestamp_str} ({age_str} ago, {len(indexed_markets)} markets)")
-
             # Stop if we have all snapshots
             if all(snapshots.values()):
                 break
@@ -291,19 +253,13 @@ def load_historical_snapshots() -> dict[str, str | dict[str, Any] | None]:
 
     conn.close()
 
-    # Debug: report which snapshots are missing
-    missing = [period for period, data in snapshots.items() if data is None]
-    if missing:
-        print(f"  ⚠️  Missing snapshots for: {', '.join(missing)}")
-        if total_snapshots > 0:
-            # Calculate how much history we have
-            history_hours = total_snapshots * 0.25  # Assuming ~15min between snapshots
-            if 'hour1' in missing and history_hours < 1:
-                print(f"  💡 Need ~4 runs for 1hr history (have {total_snapshots} snapshots = {history_hours:.1f}hr)")
-            elif 'hours24' in missing and history_hours < 24:
-                print(f"  💡 Need ~96 runs for 24hr history (have {total_snapshots} snapshots = {history_hours:.1f}hr)")
-            elif 'days7' in missing and history_hours < 168:
-                print(f"  💡 Need ~672 runs for 7d history (have {total_snapshots} snapshots = {history_hours/24:.1f} days)")
+    # Log snapshot status
+    loaded = [k for k, v in snapshots.items() if v is not None]
+    if loaded:
+        print(f"Loaded snapshots: {', '.join(loaded)} (total: {total_snapshots})")
+    elif total_snapshots > 0:
+        history_hrs = total_snapshots * 0.25
+        print(f"No snapshots old enough yet ({total_snapshots} snapshots = {history_hrs:.1f}hr history)")
 
     return snapshots
 
@@ -582,14 +538,8 @@ def deduplicate_related_markets(markets: list[dict[str, Any]]) -> list[dict[str,
 def filter_and_sort_markets(markets: list[dict[str, Any]], historical_snapshots: dict[str, str | dict[str, Any] | None]) -> list[dict[str, Any]]:
     """Filter markets closing in next 90 days and sort by volume"""
     now = datetime.now(UTC)
-
     filtered = []
-
-    print("🔄 Filtering and processing markets...")
-
-    # Load previous market data ONCE for O(1) lookups
     previous_markets = load_previous_markets()
-    print(f"  📖 Loaded {len(previous_markets)} previous markets for comparison")
 
     # First pass: filter active markets closing in next 90 days with valid outcome data
     for market in markets:
@@ -630,19 +580,11 @@ def filter_and_sort_markets(markets: list[dict[str, Any]], historical_snapshots:
         except (ValueError, TypeError) as e:
             continue
 
-    print(f"  Found {len(filtered)} markets closing in next 90 days")
-
-    # Second pass: Deduplicate BEFORE generating statements (efficiency!)
-    print("\n🔗 Deduplicating related markets...")
     filtered = deduplicate_related_markets(filtered)
-    print(f"  After deduplication: {len(filtered)} unique events")
 
-    # Calculate price changes only for deduplicated markets (saves ~40% calculations)
-    print("  📊 Calculating price changes for deduplicated markets...")
     for market in filtered:
         market['priceChanges'] = calculate_price_changes(market, historical_snapshots)
 
-    # Third pass: Check previous markets.json for existing classifications
     markets_needing_statements = []
     market_indices = []
 
@@ -650,41 +592,31 @@ def filter_and_sort_markets(markets: list[dict[str, Any]], historical_snapshots:
         market_id = market.get('id', '')
         previous_data = previous_markets.get(market_id)
 
-        # Check if we already have a classification with the same outcome
         if previous_data and previous_data.get('mostLikelyOutcome') == market['mostLikelyOutcome']:
-            # Reuse existing classification
             market['statement'] = previous_data.get('statement', market.get('question'))
             market['displayProbability'] = round(market['currentProbability'], 1)
             market['category'] = previous_data.get('category', 'Other')
         else:
-            # New market or outcome changed, need to generate
             markets_needing_statements.append(market)
             market_indices.append(i)
 
-    # Fourth pass: Batch generate statements only for markets that need them
     if markets_needing_statements:
-        print(f"  🤖 Generating {len(markets_needing_statements)} new statements with LLM...")
+        print(f"Generating {len(markets_needing_statements)} statements via LLM...")
         try:
             statements = generate_statements(markets_needing_statements)
-
-            # Assign statements and categories back to markets
             for i, statement_obj in enumerate(statements):
                 market_idx = market_indices[i]
                 market = filtered[market_idx]
                 market['statement'] = statement_obj.statement
                 market['displayProbability'] = round(market['currentProbability'], 1)
                 market['category'] = statement_obj.category
-
         except Exception as e:
-            print(f"  ⚠️  Error in batch generation: {e}")
-            # Fallback: use question as statement and default category
+            print(f"LLM generation failed: {e}, using fallback")
             for i, market in enumerate(markets_needing_statements):
                 market_idx = market_indices[i]
                 filtered[market_idx]['statement'] = market.get('question', '').rstrip('?') + '.'
                 filtered[market_idx]['displayProbability'] = round(market['currentProbability'], 1)
                 filtered[market_idx]['category'] = 'Other'
-    else:
-        print(f"  ✅ All {len(filtered)} markets found in previous data, no LLM calls needed!")
 
     # Sort by volume (highest first)
     filtered.sort(key=lambda x: float(x.get('volume', 0)), reverse=True)
@@ -710,8 +642,6 @@ def save_markets(markets: list[dict[str, Any]]) -> None:
     with open(OUTPUT_FILE, 'w') as f:
         json.dump(data, f, indent=2, cls=DecimalEncoder)
 
-    print(f"✅ Saved {len(markets)} markets to {OUTPUT_FILE}")
-
 def save_historical_snapshot(markets: list[dict[str, Any]]) -> None:
     """Save a snapshot to SQLite database"""
     timestamp = datetime.now(UTC).strftime('%Y-%m-%d_%H-%M')
@@ -730,10 +660,6 @@ def save_historical_snapshot(markets: list[dict[str, Any]]) -> None:
 
     conn.commit()
     conn.close()
-
-    print(f"📸 Saved historical snapshot to DB: {timestamp}")
-
-    # Clean up old snapshots
     cleanup_old_snapshots()
 
 def cleanup_old_snapshots() -> None:
@@ -754,29 +680,18 @@ def cleanup_old_snapshots() -> None:
     conn.commit()
     conn.close()
 
-    if removed_count > 0:
-        print(f"🧹 Cleaned up {removed_count} old snapshots from DB")
-
 def main() -> None:
     init_database()
 
-    # Fetch all markets
     all_markets = fetch_all_markets()
-    print(f"📊 Retrieved {len(all_markets)} total markets")
+    print(f"Fetched {len(all_markets)} markets")
 
-    # Save snapshot for future price change calculations
     save_historical_snapshot(all_markets)
-
-    # Load historical snapshots for price change calculation
     historical_snapshots = load_historical_snapshots()
 
-    # Filter and sort markets
     filtered_markets = filter_and_sort_markets(all_markets, historical_snapshots)
-    print(f"✨ Final selection: {len(filtered_markets)} markets closing in next 90 days")
-
-    # Save to main file
     save_markets(filtered_markets)
-    print("🎉 Done!")
+    print(f"Saved {len(filtered_markets)} markets")
 
 if __name__ == '__main__':
     main()
