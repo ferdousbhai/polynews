@@ -21,6 +21,7 @@ API_URL = "https://gamma-api.polymarket.com/markets"
 OUTPUT_FILE = "docs/markets.json"
 DB_FILE = "markets.db"
 TIME_WINDOW = timedelta(days=90)
+MODEL = "gemini-2.5-flash-lite"
 
 # Pydantic models for API validation
 class PolymarketEvent(BaseModel):
@@ -338,33 +339,27 @@ def generate_statements(markets: list[dict[str, Any]]) -> list[MarketStatement]:
     prompt = """Convert each prediction market question into a declarative statement and classify its category.
 
 Rules:
-- Yes outcome → "[subject] will [verb]"
-- No outcome → "[subject] will not [verb]"
-- Remove question marks
-- Preserve capitalization (GDP, Q1, AI, etc.) and special symbols (≥, %, etc.)
+- Convert question to affirmative statement: "[subject] will [verb]"
+- Remove question marks, preserve capitalization (GDP, Q1, AI) and symbols (≥, %)
 
-Categories (choose one):
-- Politics: Elections, politicians, government positions, legislation
-- Sports: Athletes, teams, championships, sporting events
-- Crypto: Bitcoin, Ethereum, cryptocurrencies, blockchain
-- Economics: Fed, inflation, GDP, interest rates, stock markets
-- Entertainment: Movies, box office, celebrities, awards
-- Geopolitics: Wars, invasions, international conflicts, leaders
-- Technology: AI achievements, tech companies, product launches
-- Science: Climate, health, pandemics, vaccines, medical discoveries, space, natural disasters
-- Pop Culture: Celebrity relationships, wealth milestones, personal life of public figures
-- Legal: Criminal trials, lawsuits, indictments, verdicts, jail time
-- Conspiracy: Fringe theories, supernatural, alternative facts, unproven claims
-- Other: Anything that doesn't fit above categories
+Categories:
+- Politics: Elections, politicians, legislation
+- Sports: Athletes, teams, championships
+- Crypto: Bitcoin, Ethereum, blockchain
+- Economics: Fed, inflation, GDP, interest rates
+- Entertainment: Movies, celebrities, awards
+- Geopolitics: Wars, conflicts, leaders
+- Technology: AI, tech companies, launches
+- Science: Climate, health, space, disasters
+- Pop Culture: Celebrity relationships, wealth
+- Legal: Trials, lawsuits, verdicts
+- Conspiracy: Fringe theories, supernatural
+- Other: Anything else
 
 Examples:
-- "Will Trump win?" + Yes → Statement: "Trump will win." Category: "Politics"
-- "Will Bitcoin reach $150k?" + No → Statement: "Bitcoin will not reach $150k." Category: "Crypto"
-- "Russia x Ukraine ceasefire?" + No → Statement: "There will not be a Russia x Ukraine ceasefire." Category: "Geopolitics"
-- "New pandemic in 2025?" + No → Statement: "There will not be a new pandemic in 2025." Category: "Science"
-- "Elon Musk trillionaire in 2025?" + No → Statement: "Elon Musk will not be a trillionaire in 2025." Category: "Pop Culture"
-- "Luigi Mangione guilty?" + Yes → Statement: "Luigi Mangione will be guilty." Category: "Legal"
-- "Is Earth flat?" + No → Statement: "Earth is not flat." Category: "Conspiracy"
+- "Will Trump win?" → "Trump will win." Category: "Politics"
+- "Bitcoin to $150k?" → "Bitcoin will reach $150k." Category: "Crypto"
+- "Luigi Mangione guilty?" → "Luigi Mangione will be found guilty." Category: "Legal"
 
 Markets to convert:
 """
@@ -377,7 +372,7 @@ Markets to convert:
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=MODEL,
             contents=prompt,
             config={
                 "response_mime_type": "application/json",
@@ -564,6 +559,11 @@ def filter_and_sort_markets(markets: list[dict[str, Any]], historical_snapshots:
 
                 if most_likely_outcome is None or current_probability is None:
                     # Skip markets without valid outcome data
+                    continue
+
+                # Only show predictions of things that WILL happen (newsworthy)
+                # Skip "X will not happen" predictions as they're not interesting
+                if most_likely_outcome != 'Yes':
                     continue
 
                 # Store for future use (defer price changes until after deduplication)
