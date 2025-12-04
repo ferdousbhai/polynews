@@ -252,11 +252,10 @@ function formatChange(change, period) {
     }
 
     const absChange = Math.abs(change);
-    const sign = change > 0 ? '+' : '';
-    const arrow = change > 0 ? '↑' : change < 0 ? '↓' : '';
+    const sign = change > 0 ? '+' : change < 0 ? '-' : '';
     const className = change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral';
 
-    return `<span class="change-badge ${className}">${period} ${arrow}${sign}${absChange.toFixed(1)}%</span>`;
+    return `<span class="change-badge ${className}">${period} ${sign}${absChange.toFixed(1)}%</span>`;
 }
 
 function calculateOdds(probability) {
