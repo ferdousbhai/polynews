@@ -26,8 +26,8 @@
     --chip-inactive-bg: #1a1a1a;
     --chip-inactive-border: #333;
     --chip-inactive-text: #a0a0a0;
-    --chip-active-bg: #fff;
-    --chip-active-border: #fff;
+    --chip-active-bg: #d0d0d0;
+    --chip-active-border: #d0d0d0;
     --chip-active-text: #0a0a0a;
 }
 
@@ -173,6 +173,7 @@ h1 {
     margin-bottom: 16px;
     white-space: pre-wrap;
     max-height: 12em;
+    overflow-x: hidden;
     overflow-y: auto;
     padding-right: 0.5rem;
 }

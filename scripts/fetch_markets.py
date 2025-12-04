@@ -336,10 +336,11 @@ def generate_statements(markets: list[dict[str, Any]]) -> list[MarketStatement]:
         return []
 
     # Create prompt for batch processing
-    prompt = """Convert each prediction market question into a declarative statement and classify its category.
+    prompt = """Convert each prediction market question into a concise declarative statement and classify its category.
 
 Rules:
-- Convert question to affirmative statement: "[subject] will [verb]"
+- Convert question to short affirmative statement: "[subject] will [verb]"
+- Be concise: remove filler words, unnecessary dates, and verbose phrases
 - Remove question marks, preserve capitalization (GDP, Q1, AI) and symbols (≥, %)
 
 Categories:
@@ -357,9 +358,10 @@ Categories:
 - Other: Anything else
 
 Examples:
-- "Will Trump win?" → "Trump will win." Category: "Politics"
-- "Bitcoin to $150k?" → "Bitcoin will reach $150k." Category: "Crypto"
-- "Luigi Mangione guilty?" → "Luigi Mangione will be found guilty." Category: "Legal"
+- "Will Trump win the 2024 presidential election?" → "Trump will win 2024 election." Category: "Politics"
+- "Will Bitcoin reach $150k by end of year?" → "Bitcoin will hit $150k." Category: "Crypto"
+- "Will NVIDIA be the largest company in the world by market cap on December 31?" → "NVIDIA will be largest company by market cap." Category: "Technology"
+- "Will Luigi Mangione be found guilty?" → "Luigi Mangione will be found guilty." Category: "Legal"
 
 Markets to convert:
 """
