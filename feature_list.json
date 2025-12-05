@@ -1,0 +1,82 @@
+[
+  {
+    "category": "style",
+    "description": "Replace card grid layout with Digg-style vertical link list",
+    "steps": [
+      "Remove .market-grid CSS grid layout",
+      "Replace with vertical list container styling",
+      "Each prediction displays as a compact list item with left-aligned elements"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Add Digg-style vote count badge (volume indicator) on left side of each prediction",
+    "steps": [
+      "Create vote/score box component on left side of list item",
+      "Display formatted volume (e.g., '1.2M') as the vote count",
+      "Style with Digg's characteristic box design (dark bg, light text)"
+    ],
+    "passes": false
+  },
+  {
+    "category": "style",
+    "description": "Style prediction headlines as clickable Digg-style links",
+    "steps": [
+      "Remove card styling from market items",
+      "Style statement/headline as primary clickable link with hover effect",
+      "Use larger font for headline, smaller for metadata"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Create compact inline metadata row for each prediction",
+    "steps": [
+      "Display probability percentage inline with headline or below",
+      "Show change metrics (1H, 24H, 7D) in compact format",
+      "Add days remaining and category as subtle inline indicators"
+    ],
+    "passes": false
+  },
+  {
+    "category": "style",
+    "description": "Maintain dark mode color scheme throughout redesign",
+    "steps": [
+      "Keep existing CSS custom properties for dark theme",
+      "Adjust colors for Digg-style layout if needed",
+      "Ensure sufficient contrast for readability"
+    ],
+    "passes": false
+  },
+  {
+    "category": "style",
+    "description": "Update trending section with Digg-appropriate styling",
+    "steps": [
+      "Restyle trending items to match new list aesthetic",
+      "Preserve trending functionality (top movers display)",
+      "Ensure visual consistency with main prediction list"
+    ],
+    "passes": false
+  },
+  {
+    "category": "enhancement",
+    "description": "Ensure responsive design for mobile views",
+    "steps": [
+      "Test layout on narrow viewports",
+      "Adjust list item layout for mobile",
+      "Maintain scannability on smaller screens"
+    ],
+    "passes": false
+  },
+  {
+    "category": "enhancement",
+    "description": "Preserve all existing data points in new compact format",
+    "steps": [
+      "Verify volume, probability, changes are visible",
+      "Ensure description is accessible (collapsible or hover)",
+      "Maintain category and timing indicators"
+    ],
+    "passes": false
+  }
+]
