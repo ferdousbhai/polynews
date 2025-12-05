@@ -1,38 +1,3 @@
-// Theme management
-function initTheme() {
-    // Default to dark mode
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    const themeToggle = document.getElementById('themeToggle');
-
-    if (savedTheme === 'light') {
-        document.body.classList.add('light-mode');
-        if (themeToggle) themeToggle.textContent = '🌙'; // Show moon in light mode (click to get dark)
-    } else {
-        document.body.classList.remove('light-mode');
-        if (themeToggle) themeToggle.textContent = '☀️'; // Show sun in dark mode (click to get light)
-    }
-}
-
-function toggleTheme() {
-    const isLightMode = document.body.classList.toggle('light-mode');
-    const themeToggle = document.getElementById('themeToggle');
-
-    if (isLightMode) {
-        themeToggle.textContent = '🌙'; // Show moon in light mode (click to get dark)
-        localStorage.setItem('theme', 'light');
-    } else {
-        themeToggle.textContent = '☀️'; // Show sun in dark mode (click to get light)
-        localStorage.setItem('theme', 'dark');
-    }
-}
-
-// Initialize theme when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initTheme);
-} else {
-    initTheme();
-}
-
 let allMarkets = [];
 let selectedCategories = new Set();
 let currentLastUpdated = null;
@@ -337,9 +302,6 @@ function createMarketCard(market) {
                     <div class="probability-changes">
                         ${changesHtml}
                     </div>
-                </div>
-                <div class="probability-track">
-                    <div class="probability-fill" style="width: ${displayProbability}%"></div>
                 </div>
             </div>
         </div>
