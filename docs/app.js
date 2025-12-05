@@ -236,6 +236,11 @@ async function fetchMarketsData() {
     return response.json();
 }
 
+function isTrending(market) {
+    const changes = market.priceChanges || {};
+    return Math.abs(changes.hours24 || 0) >= 10 || Math.abs(changes.hour1 || 0) >= 5;
+}
+
 function createMarketCard(market) {
     const daysRemaining = getDaysRemaining(market.endDateIso);
 
@@ -244,6 +249,7 @@ function createMarketCard(market) {
     const displayProbability = market.displayProbability || 50;
     const category = market.category || 'Other';
     const categoryIcon = categoryIcons[category] || '📊';
+    const trending = isTrending(market);
 
     const changes = market.priceChanges || {};
     const changesHtml = `
@@ -261,7 +267,7 @@ function createMarketCard(market) {
         : `https://polymarket.com/${market.slug}`;
 
     return `
-        <div class="market-card" onclick="window.open('${url}', '_blank')">
+        <div class="market-card${trending ? ' trending' : ''}" onclick="window.open('${url}', '_blank')">
             <div class="market-header">
                 <div class="days-remaining">${daysRemaining} days left</div>
                 <div class="market-volume">${formatVolume(market.volume)}</div>
@@ -309,10 +315,21 @@ function renderTrendingHeadline() {
         return;
     }
 
-    // Get top 3 by 24H change
-    const topMovers = [...allMarkets]
-        .sort((a, b) => Math.abs(b.priceChanges?.hours24 || 0) - Math.abs(a.priceChanges?.hours24 || 0))
-        .slice(0, 3);
+    // Get all trending (>=10% 24H or >=5% 1H)
+    const trending = allMarkets.filter(isTrending);
+
+    // If fewer than 3 trending, fill with top 24H movers
+    let topMovers;
+    if (trending.length >= 3) {
+        topMovers = trending.sort((a, b) =>
+            Math.abs(b.priceChanges?.hours24 || 0) - Math.abs(a.priceChanges?.hours24 || 0)
+        );
+    } else {
+        const sorted = [...allMarkets].sort((a, b) =>
+            Math.abs(b.priceChanges?.hours24 || 0) - Math.abs(a.priceChanges?.hours24 || 0)
+        );
+        topMovers = sorted.slice(0, 3);
+    }
 
     const html = topMovers.map(market => {
         const statement = market.statement || market.question;

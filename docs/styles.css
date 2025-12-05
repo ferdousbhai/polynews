@@ -129,6 +129,16 @@ h1 {
     border-color: var(--card-hover-border);
 }
 
+.market-card.trending {
+    border-color: rgba(251, 191, 36, 0.5);
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.1);
+}
+
+.market-card.trending:hover {
+    border-color: rgba(251, 191, 36, 0.7);
+    box-shadow: 0 0 24px rgba(251, 191, 36, 0.15);
+}
+
 .market-header {
     display: flex;
     justify-content: space-between;
