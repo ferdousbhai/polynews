@@ -7,7 +7,7 @@
       "Replace with vertical list container styling",
       "Each prediction displays as a compact list item with left-aligned elements"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -17,7 +17,7 @@
       "Display formatted volume (e.g., '1.2M') as the vote count",
       "Style with Digg's characteristic box design (dark bg, light text)"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "style",
@@ -27,7 +27,7 @@
       "Style statement/headline as primary clickable link with hover effect",
       "Use larger font for headline, smaller for metadata"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -37,7 +37,7 @@
       "Show change metrics (1H, 24H, 7D) in compact format",
       "Add days remaining and category as subtle inline indicators"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "style",
@@ -47,7 +47,7 @@
       "Adjust colors for Digg-style layout if needed",
       "Ensure sufficient contrast for readability"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "style",
@@ -57,7 +57,7 @@
       "Preserve trending functionality (top movers display)",
       "Ensure visual consistency with main prediction list"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "enhancement",
@@ -67,7 +67,7 @@
       "Adjust list item layout for mobile",
       "Maintain scannability on smaller screens"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "enhancement",
@@ -77,6 +77,6 @@
       "Ensure description is accessible (collapsible or hover)",
       "Maintain category and timing indicators"
     ],
-    "passes": false
+    "passes": true
   }
 ]

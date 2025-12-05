@@ -13,8 +13,10 @@
     --text-tertiary: #707070;
     --border-color: #333;
     --accent: #fff;
-    --card-hover-border: #555;
-    --badge-bg: #2a2a2a;
+    --link-color: #7eb8da;
+    --link-hover: #a8d4f0;
+    --vote-box-bg: #2a2a2a;
+    --vote-box-border: #444;
     --positive-bg: #0f2817;
     --positive-text: #4ade80;
     --negative-bg: #2d1414;
@@ -32,15 +34,15 @@ body {
 }
 
 .container {
-    max-width: 1280px;
+    max-width: 960px;
     margin: 0 auto;
     padding: 0 24px;
 }
 
 header {
-    padding: 48px 0 32px;
+    padding: 32px 0 24px;
     border-bottom: 1px solid var(--border-color);
-    margin-bottom: 32px;
+    margin-bottom: 24px;
     background: var(--bg-secondary);
     text-align: center;
 }
@@ -63,11 +65,11 @@ h1 {
     margin-top: 16px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
 }
 
 .trending-item {
-    font-size: 1rem;
+    font-size: 0.9rem;
     line-height: 1.4;
     color: #fbbf24;
     font-weight: 500;
@@ -90,184 +92,154 @@ h1 {
     max-width: 600px;
 }
 
-.market-grid {
-    display: grid;
-    gap: 24px;
-    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+/* Digg-style list layout */
+.market-list {
+    display: flex;
+    flex-direction: column;
     padding-bottom: 48px;
 }
 
-.market-card {
-    background: var(--bg-secondary);
-    border-radius: 12px;
-    padding: 24px;
-    border: 1px solid var(--border-color);
-    transition: all 0.2s ease;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
+.market-item {
     display: flex;
-    flex-direction: column;
-}
-
-.market-card:hover {
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-    border-color: var(--card-hover-border);
-}
-
-.market-card.trending {
-    border-color: rgba(251, 191, 36, 0.5);
-    box-shadow: 0 0 20px rgba(251, 191, 36, 0.1);
-}
-
-.market-card.trending:hover {
-    border-color: rgba(251, 191, 36, 0.7);
-    box-shadow: 0 0 24px rgba(251, 191, 36, 0.15);
-}
-
-.market-header {
-    display: flex;
-    justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 12px;
-}
-
-.market-volume {
-    background: var(--accent);
-    color: var(--bg-primary);
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 0.75rem;
-    white-space: nowrap;
-}
-
-.market-title {
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 8px;
-    line-height: 1.5;
-}
-
-.market-description {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    line-height: 1.6;
-    margin-bottom: 16px;
-    white-space: pre-wrap;
-    max-height: 12em;
-    overflow-x: hidden;
-    overflow-y: auto;
-    padding-right: 0.5rem;
-}
-
-.market-description::-webkit-scrollbar {
-    width: 4px;
-}
-
-.market-description::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.market-description::-webkit-scrollbar-thumb {
-    background: var(--text-tertiary);
-    border-radius: 2px;
-}
-
-.market-description::-webkit-scrollbar-thumb:hover {
-    background: var(--text-secondary);
-}
-
-.market-meta {
-    display: flex;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border-color);
     gap: 16px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
-    font-size: 0.875rem;
+    transition: background-color 0.15s ease;
 }
 
-.meta-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--text-secondary);
+.market-item:hover {
+    background-color: rgba(255, 255, 255, 0.02);
 }
 
-.meta-icon {
-    width: 14px;
-    height: 14px;
-}
-
-.probability-section {
-    margin-top: auto;
-    padding-top: 16px;
+.market-item:first-child {
     border-top: 1px solid var(--border-color);
 }
 
-.probability-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.market-item.trending {
+    background-color: rgba(251, 191, 36, 0.03);
 }
 
-.probability-main {
+.market-item.trending:hover {
+    background-color: rgba(251, 191, 36, 0.06);
+}
+
+/* Digg-style vote box (volume indicator) */
+.vote-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 64px;
+    padding: 12px 8px;
+    background: var(--vote-box-bg);
+    border: 1px solid var(--vote-box-border);
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.vote-count {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.vote-label {
+    font-size: 0.625rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    margin-top: 4px;
+    letter-spacing: 0.05em;
+}
+
+.market-item.trending .vote-box {
+    border-color: rgba(251, 191, 36, 0.5);
+    background: rgba(251, 191, 36, 0.08);
+}
+
+.market-item.trending .vote-count {
+    color: #fbbf24;
+}
+
+/* Market content area */
+.market-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.market-title-row {
     display: flex;
     align-items: baseline;
-    gap: 8px;
-}
-
-.probability-wrapper {
-    position: relative;
-    display: inline-block;
-}
-
-.probability-value {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    cursor: help;
-}
-
-.odds-tooltip {
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    padding: 6px 10px;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    white-space: nowrap;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
-    pointer-events: none;
-    z-index: 10;
-}
-
-.probability-wrapper:hover .odds-tooltip {
-    opacity: 1;
-    visibility: visible;
-}
-
-.probability-changes {
-    display: flex;
-    gap: 6px;
+    gap: 12px;
+    margin-bottom: 6px;
     flex-wrap: wrap;
 }
 
-.change-badge {
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.6875rem;
-    font-weight: 600;
+.market-title {
+    font-size: 1.0625rem;
+    font-weight: 500;
+    color: var(--link-color);
+    line-height: 1.4;
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.market-title:hover {
+    color: var(--link-hover);
+    text-decoration: underline;
+}
+
+.probability-inline {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.market-meta-row {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+.meta-separator {
+    color: var(--text-tertiary);
+}
+
+.category-tag {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    padding: 2px 8px;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+}
+
+.days-tag {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.market-changes {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+}
+
+.change-badge {
+    padding: 3px 6px;
+    border-radius: 3px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
 }
 
 .change-badge.positive {
@@ -285,6 +257,20 @@ h1 {
     color: var(--neutral-text);
 }
 
+/* Description - collapsible on hover */
+.market-description {
+    font-size: 0.8125rem;
+    color: var(--text-tertiary);
+    line-height: 1.5;
+    margin-top: 8px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.2s ease;
+}
+
+.market-item:hover .market-description {
+    max-height: 200px;
+}
 
 .no-results {
     text-align: center;
@@ -293,102 +279,10 @@ h1 {
     padding: 4rem;
 }
 
-.days-remaining {
-    display: inline-block;
-    background: var(--badge-bg);
-    color: var(--text-primary);
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 0.75rem;
-}
-
-.info-icon {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-}
-
-.info-trigger {
-    font-size: 1.125rem;
-    cursor: pointer;
-    opacity: 0.6;
-    transition: opacity 0.2s ease;
-    user-select: none;
-}
-
-.info-trigger:hover {
-    opacity: 1;
-}
-
-.info-tooltip {
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--bg-tertiary);
-    border-radius: 8px;
-    padding: 16px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    border: 1px solid var(--border-color);
-    min-width: 240px;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
-    z-index: 1000;
-}
-
-.info-icon:hover .info-tooltip {
-    opacity: 1;
-    visibility: visible;
-}
-
-.tooltip-title {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 12px;
-    text-align: center;
-}
-
-.tooltip-content {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.tooltip-content .accuracy-stat {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-}
-
-.accuracy-time {
-    color: var(--text-primary);
-    font-weight: 500;
-}
-
-.accuracy-value {
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.tooltip-source {
-    text-align: center;
-    color: var(--text-tertiary);
-    font-size: 0.75rem;
-    margin-top: 8px;
-    padding-top: 12px;
-    border-top: 1px solid var(--border-color);
-}
-
 .filters-section {
     background: var(--bg-secondary);
     border-radius: 8px;
-    padding: 20px;
+    padding: 16px 20px;
     margin-bottom: 24px;
     border: 1px solid var(--border-color);
 }
@@ -425,12 +319,12 @@ h1 {
 }
 
 .sort-select:hover {
-    border-color: var(--card-hover-border);
+    border-color: var(--vote-box-border);
 }
 
 .sort-select:focus {
     outline: none;
-    border-color: var(--card-hover-border);
+    border-color: var(--vote-box-border);
 }
 
 .filters-reset {
@@ -449,23 +343,23 @@ h1 {
 .category-filters {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
 }
 
 .category-chip {
-    padding: 10px 16px;
-    border-radius: 24px;
+    padding: 8px 12px;
+    border-radius: 20px;
     border: 1px solid var(--border-color);
     background: transparent;
     color: var(--text-primary);
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 400;
     cursor: pointer;
     transition: all 0.2s ease;
     user-select: none;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     white-space: nowrap;
 }
 
@@ -486,7 +380,7 @@ h1 {
 }
 
 .category-count {
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     font-weight: 500;
     opacity: 0.6;
 }
@@ -495,56 +389,60 @@ h1 {
     opacity: 0.7;
 }
 
-.market-category-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    background: var(--badge-bg);
-    color: var(--text-primary);
-    margin-bottom: 8px;
-}
-
 @media (max-width: 768px) {
     .container {
         padding: 0 16px;
     }
 
     header {
-        padding: 32px 0 24px;
+        padding: 24px 0 16px;
     }
 
     h1 {
         font-size: 1.5rem;
     }
 
-    .subtitle {
+    .market-item {
+        padding: 12px 0;
+        gap: 12px;
+    }
+
+    .vote-box {
+        min-width: 52px;
+        padding: 10px 6px;
+    }
+
+    .vote-count {
         font-size: 0.875rem;
     }
 
-    .market-grid {
-        grid-template-columns: 1fr;
-        gap: 16px;
+    .vote-label {
+        font-size: 0.5625rem;
     }
 
-    .market-card {
-        padding: 20px;
+    .market-title {
+        font-size: 0.9375rem;
     }
 
-    .probability-changes {
-        justify-content: flex-start;
+    .probability-inline {
+        font-size: 0.875rem;
     }
 
-    .info-tooltip {
-        left: auto;
-        right: 0;
-        transform: none;
-        min-width: 200px;
+    .market-meta-row {
+        font-size: 0.75rem;
+    }
+
+    .market-changes {
+        gap: 4px;
+    }
+
+    .change-badge {
+        padding: 2px 5px;
+        font-size: 0.625rem;
     }
 
     .filters-section {
-        padding: 16px;
+        padding: 12px 16px;
     }
 
     .filters-header {
@@ -558,7 +456,12 @@ h1 {
     }
 
     .trending-item {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
+    }
+
+    .category-chip {
+        padding: 6px 10px;
+        font-size: 0.75rem;
     }
 }
 
