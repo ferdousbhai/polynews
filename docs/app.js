@@ -192,18 +192,6 @@ function formatLastUpdated(timestamp) {
     return `Updated ${days} day${days > 1 ? 's' : ''}, ${remainingHours} hour${remainingHours > 1 ? 's' : ''} ago`;
 }
 
-function formatChange(change, period) {
-    if (change === null || change === undefined) {
-        return `<span class="change-badge neutral">${period} —</span>`;
-    }
-
-    const absChange = Math.abs(change);
-    const sign = change > 0 ? '+' : change < 0 ? '-' : '';
-    const className = change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral';
-
-    return `<span class="change-badge ${className}">${period} ${sign}${absChange.toFixed(1)}%</span>`;
-}
-
 async function fetchMarketsData() {
     const response = await fetch(`markets.json?t=${Date.now()}`);
     if (!response.ok) {
@@ -224,13 +212,6 @@ function createMarketItem(market) {
     const category = market.category || 'Other';
     const categoryIcon = categoryIcons[category] || '📊';
     const trending = isTrending(market);
-
-    const changes = market.priceChanges || {};
-    const changesHtml = `
-        ${formatChange(changes.hour1, '1H')}
-        ${formatChange(changes.hours24, '24H')}
-        ${formatChange(changes.days7, '7D')}
-    `;
 
     const url = market.eventSlug
         ? `https://polymarket.com/event/${market.eventSlug}`
@@ -254,9 +235,6 @@ function createMarketItem(market) {
                     <span class="days-tag">${daysRemaining} days left</span>
                     <span class="meta-separator">·</span>
                     <span>Closes ${formatDate(market.endDateIso)}</span>
-                </div>
-                <div class="market-changes">
-                    ${changesHtml}
                 </div>
                 ${description ? `<div class="market-description">${description}</div>` : ''}
             </div>

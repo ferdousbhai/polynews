@@ -204,38 +204,6 @@ h1 {
     color: var(--text-secondary);
 }
 
-.market-changes {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    margin-top: 6px;
-}
-
-.change-badge {
-    padding: 3px 6px;
-    border-radius: 3px;
-    font-size: 0.6875rem;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-}
-
-.change-badge.positive {
-    background: var(--positive-bg);
-    color: var(--positive-text);
-}
-
-.change-badge.negative {
-    background: var(--negative-bg);
-    color: var(--negative-text);
-}
-
-.change-badge.neutral {
-    background: var(--neutral-bg);
-    color: var(--neutral-text);
-}
-
 /* Description - collapsible on hover */
 .market-description {
     font-size: 0.8125rem;
@@ -405,15 +373,6 @@ h1 {
 
     .market-meta-row {
         font-size: 0.75rem;
-    }
-
-    .market-changes {
-        gap: 4px;
-    }
-
-    .change-badge {
-        padding: 2px 5px;
-        font-size: 0.625rem;
     }
 
     .filters-section {
