@@ -69,22 +69,8 @@ h1 {
 .trending-item {
     font-size: 1rem;
     line-height: 1.4;
-}
-
-.trending-statement {
     color: #fbbf24;
     font-weight: 500;
-}
-
-.trending-stats {
-    margin-left: 10px;
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-}
-
-.trending-change {
-    color: #4ade80;
-    font-weight: 600;
 }
 
 .loading {

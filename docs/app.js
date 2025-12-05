@@ -333,13 +333,7 @@ function renderTrendingHeadline() {
 
     const html = topMovers.map(market => {
         const statement = market.statement || market.question;
-        const prob = market.displayProbability || 50;
-        const change = market.priceChanges?.hours24 || 0;
-        const sign = change >= 0 ? '+' : '';
-        return `<div class="trending-item">
-            <span class="trending-statement">${statement}</span>
-            <span class="trending-stats">${prob}% <span class="trending-change">${sign}${change.toFixed(1)}%</span></span>
-        </div>`;
+        return `<div class="trending-item">${statement}</div>`;
     }).join('');
 
     headlineEl.innerHTML = html;
