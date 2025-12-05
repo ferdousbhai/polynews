@@ -242,6 +242,13 @@ async function fetchMarketsData() {
     return response.json();
 }
 
+function isTrending(market) {
+    const changes = market.priceChanges || {};
+    const abs1h = Math.abs(changes.hour1 || 0);
+    const abs24h = Math.abs(changes.hours24 || 0);
+    return abs1h >= 5 || abs24h >= 10;
+}
+
 function createMarketCard(market) {
     const daysRemaining = getDaysRemaining(market.endDateIso);
 
@@ -308,6 +315,39 @@ function createMarketCard(market) {
     `;
 }
 
+function renderTrendingHeadline() {
+    const headlineEl = document.getElementById('trendingHeadline');
+    if (!headlineEl) return;
+
+    // Find the most significant trending market (highest absolute 1H change, then 24H)
+    const trendingMarkets = allMarkets
+        .filter(m => isTrending(m))
+        .sort((a, b) => {
+            const a1h = Math.abs(a.priceChanges?.hour1 || 0);
+            const b1h = Math.abs(b.priceChanges?.hour1 || 0);
+            if (a1h !== b1h) return b1h - a1h;
+            const a24h = Math.abs(a.priceChanges?.hours24 || 0);
+            const b24h = Math.abs(b.priceChanges?.hours24 || 0);
+            return b24h - a24h;
+        });
+
+    if (trendingMarkets.length === 0) {
+        headlineEl.innerHTML = '';
+        return;
+    }
+
+    const top = trendingMarkets[0];
+    const statement = top.statement || top.question;
+    const prob = top.displayProbability || 50;
+    const change1h = top.priceChanges?.hour1 || 0;
+    const changeSign = change1h >= 0 ? '+' : '';
+
+    headlineEl.innerHTML = `
+        <span class="trending-statement">${statement}</span>
+        <span class="trending-stats">${prob}% <span class="trending-change">${changeSign}${change1h.toFixed(1)}% 1H</span></span>
+    `;
+}
+
 async function loadMarkets() {
     const contentEl = document.getElementById('content');
     const lastUpdatedEl = document.getElementById('lastUpdated');
@@ -333,6 +373,9 @@ async function loadMarkets() {
 
         // Load saved category preferences
         loadCategoryPreferences();
+
+        // Render trending headline
+        renderTrendingHeadline();
 
         // Render category filters
         renderCategoryFilters();
