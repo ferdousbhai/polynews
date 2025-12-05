@@ -317,34 +317,55 @@ function createMarketCard(market) {
 
 function renderTrendingHeadline() {
     const headlineEl = document.getElementById('trendingHeadline');
-    if (!headlineEl) return;
+    if (!headlineEl || allMarkets.length === 0) {
+        if (headlineEl) headlineEl.innerHTML = '';
+        return;
+    }
 
-    // Find the most significant trending market (highest absolute 1H change, then 24H)
-    const trendingMarkets = allMarkets
-        .filter(m => isTrending(m))
-        .sort((a, b) => {
-            const a1h = Math.abs(a.priceChanges?.hour1 || 0);
-            const b1h = Math.abs(b.priceChanges?.hour1 || 0);
-            if (a1h !== b1h) return b1h - a1h;
-            const a24h = Math.abs(a.priceChanges?.hours24 || 0);
-            const b24h = Math.abs(b.priceChanges?.hours24 || 0);
-            return b24h - a24h;
+    // Sort by biggest movers: prioritize 1H change, then 24H
+    const sortedByMovement = [...allMarkets].sort((a, b) => {
+        const a1h = Math.abs(a.priceChanges?.hour1 || 0);
+        const b1h = Math.abs(b.priceChanges?.hour1 || 0);
+        if (a1h !== b1h) return b1h - a1h;
+        const a24h = Math.abs(a.priceChanges?.hours24 || 0);
+        const b24h = Math.abs(b.priceChanges?.hours24 || 0);
+        return b24h - a24h;
+    });
+
+    // Get markets that meet the trending threshold
+    const trendingMarkets = sortedByMovement.filter(m => isTrending(m));
+
+    // Use trending if available, otherwise fall back to top 3 movers by 24H change
+    let topMover;
+    if (trendingMarkets.length > 0) {
+        topMover = trendingMarkets[0];
+    } else {
+        // Fall back to biggest 24H mover with at least some movement
+        const by24h = [...allMarkets].sort((a, b) => {
+            return Math.abs(b.priceChanges?.hours24 || 0) - Math.abs(a.priceChanges?.hours24 || 0);
         });
+        topMover = by24h[0];
+    }
 
-    if (trendingMarkets.length === 0) {
+    if (!topMover) {
         headlineEl.innerHTML = '';
         return;
     }
 
-    const top = trendingMarkets[0];
-    const statement = top.statement || top.question;
-    const prob = top.displayProbability || 50;
-    const change1h = top.priceChanges?.hour1 || 0;
-    const changeSign = change1h >= 0 ? '+' : '';
+    const statement = topMover.statement || topMover.question;
+    const prob = topMover.displayProbability || 50;
+
+    // Show whichever change is more significant
+    const change1h = topMover.priceChanges?.hour1 || 0;
+    const change24h = topMover.priceChanges?.hours24 || 0;
+    const useHourly = Math.abs(change1h) >= Math.abs(change24h) && Math.abs(change1h) > 0;
+    const change = useHourly ? change1h : change24h;
+    const period = useHourly ? '1H' : '24H';
+    const changeSign = change >= 0 ? '+' : '';
 
     headlineEl.innerHTML = `
         <span class="trending-statement">${statement}</span>
-        <span class="trending-stats">${prob}% <span class="trending-change">${changeSign}${change1h.toFixed(1)}% 1H</span></span>
+        <span class="trending-stats">${prob}% <span class="trending-change">${changeSign}${change.toFixed(1)}% ${period}</span></span>
     `;
 }
 
