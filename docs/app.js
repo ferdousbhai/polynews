@@ -302,63 +302,30 @@ function createMarketCard(market) {
     `;
 }
 
-let trendingIndex = 0;
-let trendingItems = [];
-
-function getTopMovers() {
-    if (allMarkets.length === 0) return [];
-
-    // Sort by biggest 24H movers
-    const sorted = [...allMarkets].sort((a, b) => {
-        const a24h = Math.abs(a.priceChanges?.hours24 || 0);
-        const b24h = Math.abs(b.priceChanges?.hours24 || 0);
-        return b24h - a24h;
-    });
-
-    // Return top 3
-    return sorted.slice(0, 3);
-}
-
-function formatTrendingItem(market) {
-    const statement = market.statement || market.question;
-    const prob = market.displayProbability || 50;
-    const change24h = market.priceChanges?.hours24 || 0;
-    const changeSign = change24h >= 0 ? '+' : '';
-
-    return `
-        <span class="trending-statement">${statement}</span>
-        <span class="trending-stats">${prob}% <span class="trending-change">${changeSign}${change24h.toFixed(1)}% 24H</span></span>
-    `;
-}
-
 function renderTrendingHeadline() {
     const headlineEl = document.getElementById('trendingHeadline');
-    if (!headlineEl) return;
-
-    trendingItems = getTopMovers();
-    if (trendingItems.length === 0) {
-        headlineEl.innerHTML = '';
+    if (!headlineEl || allMarkets.length === 0) {
+        if (headlineEl) headlineEl.innerHTML = '';
         return;
     }
 
-    trendingIndex = 0;
-    headlineEl.innerHTML = formatTrendingItem(trendingItems[0]);
-}
+    // Get top 3 by 24H change
+    const topMovers = [...allMarkets]
+        .sort((a, b) => Math.abs(b.priceChanges?.hours24 || 0) - Math.abs(a.priceChanges?.hours24 || 0))
+        .slice(0, 3);
 
-function rotateTrendingHeadline() {
-    const headlineEl = document.getElementById('trendingHeadline');
-    if (!headlineEl || trendingItems.length === 0) return;
+    const html = topMovers.map(market => {
+        const statement = market.statement || market.question;
+        const prob = market.displayProbability || 50;
+        const change = market.priceChanges?.hours24 || 0;
+        const sign = change >= 0 ? '+' : '';
+        return `<div class="trending-item">
+            <span class="trending-statement">${statement}</span>
+            <span class="trending-stats">${prob}% <span class="trending-change">${sign}${change.toFixed(1)}%</span></span>
+        </div>`;
+    }).join('');
 
-    trendingIndex = (trendingIndex + 1) % trendingItems.length;
-
-    // Fade out
-    headlineEl.style.opacity = '0';
-
-    setTimeout(() => {
-        headlineEl.innerHTML = formatTrendingItem(trendingItems[trendingIndex]);
-        // Fade in
-        headlineEl.style.opacity = '1';
-    }, 300);
+    headlineEl.innerHTML = html;
 }
 
 async function loadMarkets() {
@@ -410,9 +377,6 @@ async function loadMarkets() {
 
 // Initial load
 loadMarkets();
-
-// Rotate trending headlines every 5 seconds
-setInterval(rotateTrendingHeadline, 5000);
 
 // Update the "Updated X ago" text every 10 seconds to keep it current
 setInterval(() => {

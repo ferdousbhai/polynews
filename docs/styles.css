@@ -60,25 +60,29 @@ h1 {
 }
 
 .trending-headline {
-    margin-top: 12px;
-    font-size: 1.125rem;
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.trending-item {
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+.trending-statement {
+    color: #fbbf24;
     font-weight: 500;
-    color: #fbbf24;
-    min-height: 1.5em;
-    transition: opacity 0.3s ease;
 }
 
-.trending-headline .trending-statement {
-    color: #fbbf24;
-}
-
-.trending-headline .trending-stats {
-    margin-left: 12px;
+.trending-stats {
+    margin-left: 10px;
     font-size: 0.875rem;
     color: var(--text-secondary);
 }
 
-.trending-headline .trending-change {
+.trending-change {
     color: #4ade80;
     font-weight: 600;
 }
@@ -563,8 +567,8 @@ h1 {
         flex-wrap: wrap;
     }
 
-    .trending-headline {
-        font-size: 1rem;
+    .trending-item {
+        font-size: 0.9rem;
     }
 }
 
