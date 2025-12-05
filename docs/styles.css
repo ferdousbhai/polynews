@@ -131,13 +131,6 @@ h1 {
     line-height: 1;
 }
 
-.vote-label {
-    font-size: 0.625rem;
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    margin-top: 4px;
-    letter-spacing: 0.05em;
-}
 
 .market-item.trending .vote-box {
     border-color: rgba(251, 191, 36, 0.5);
@@ -400,10 +393,6 @@ h1 {
 
     .vote-count {
         font-size: 0.875rem;
-    }
-
-    .vote-label {
-        font-size: 0.5625rem;
     }
 
     .market-title {

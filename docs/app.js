@@ -242,7 +242,6 @@ function createMarketItem(market) {
         <div class="market-item${trending ? ' trending' : ''}">
             <div class="vote-box">
                 <span class="vote-count">${formatVolume(market.volume)}</span>
-                <span class="vote-label">volume</span>
             </div>
             <div class="market-content">
                 <div class="market-title-row">
