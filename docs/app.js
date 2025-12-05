@@ -321,11 +321,8 @@ let trendingItems = [];
 function getTopMovers() {
     if (allMarkets.length === 0) return [];
 
-    // Sort by biggest movers: prioritize 1H change, then 24H
+    // Sort by biggest 24H movers
     const sorted = [...allMarkets].sort((a, b) => {
-        const a1h = Math.abs(a.priceChanges?.hour1 || 0);
-        const b1h = Math.abs(b.priceChanges?.hour1 || 0);
-        if (a1h !== b1h) return b1h - a1h;
         const a24h = Math.abs(a.priceChanges?.hours24 || 0);
         const b24h = Math.abs(b.priceChanges?.hours24 || 0);
         return b24h - a24h;
@@ -338,18 +335,12 @@ function getTopMovers() {
 function formatTrendingItem(market) {
     const statement = market.statement || market.question;
     const prob = market.displayProbability || 50;
-
-    // Show whichever change is more significant
-    const change1h = market.priceChanges?.hour1 || 0;
     const change24h = market.priceChanges?.hours24 || 0;
-    const useHourly = Math.abs(change1h) >= Math.abs(change24h) && Math.abs(change1h) > 0;
-    const change = useHourly ? change1h : change24h;
-    const period = useHourly ? '1H' : '24H';
-    const changeSign = change >= 0 ? '+' : '';
+    const changeSign = change24h >= 0 ? '+' : '';
 
     return `
         <span class="trending-statement">${statement}</span>
-        <span class="trending-stats">${prob}% <span class="trending-change">${changeSign}${change.toFixed(1)}% ${period}</span></span>
+        <span class="trending-stats">${prob}% <span class="trending-change">${changeSign}${change24h.toFixed(1)}% 24H</span></span>
     `;
 }
 
