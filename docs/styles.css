@@ -87,12 +87,6 @@ h1 {
     font-weight: 600;
 }
 
-.last-updated {
-    margin-top: 8px;
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-}
-
 .loading {
     text-align: center;
     color: var(--text-secondary);
