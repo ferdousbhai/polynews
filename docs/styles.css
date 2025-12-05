@@ -98,6 +98,8 @@ h1 {
     cursor: pointer;
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .market-card:hover {
@@ -180,7 +182,7 @@ h1 {
 }
 
 .probability-section {
-    margin-top: 16px;
+    margin-top: auto;
     padding-top: 16px;
     border-top: 1px solid var(--border-color);
 }
