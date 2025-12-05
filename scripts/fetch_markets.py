@@ -505,7 +505,7 @@ def filter_and_sort_markets(markets: list[dict[str, Any]], historical_snapshots:
                 continue
 
             most_likely_outcome, current_probability = get_most_likely_outcome(market)
-            if most_likely_outcome is None or current_probability is None or most_likely_outcome != 'Yes':
+            if most_likely_outcome is None or current_probability is None or most_likely_outcome != 'Yes' or current_probability < 55:
                 continue
 
             market['mostLikelyOutcome'] = most_likely_outcome
