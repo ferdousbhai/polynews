@@ -2,7 +2,7 @@
   "mcpServers": {
     "puppeteer-mcp-claude": {
       "command": "npx",
-      "args": ["-y", "puppeteer-mcp-claude", "serve"]
+      "args": ["puppeteer-mcp-claude", "serve"]
     }
   }
 }
