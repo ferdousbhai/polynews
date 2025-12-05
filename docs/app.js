@@ -315,15 +315,14 @@ function createMarketCard(market) {
     `;
 }
 
-function renderTrendingHeadline() {
-    const headlineEl = document.getElementById('trendingHeadline');
-    if (!headlineEl || allMarkets.length === 0) {
-        if (headlineEl) headlineEl.innerHTML = '';
-        return;
-    }
+let trendingIndex = 0;
+let trendingItems = [];
+
+function getTopMovers() {
+    if (allMarkets.length === 0) return [];
 
     // Sort by biggest movers: prioritize 1H change, then 24H
-    const sortedByMovement = [...allMarkets].sort((a, b) => {
+    const sorted = [...allMarkets].sort((a, b) => {
         const a1h = Math.abs(a.priceChanges?.hour1 || 0);
         const b1h = Math.abs(b.priceChanges?.hour1 || 0);
         if (a1h !== b1h) return b1h - a1h;
@@ -332,41 +331,56 @@ function renderTrendingHeadline() {
         return b24h - a24h;
     });
 
-    // Get markets that meet the trending threshold
-    const trendingMarkets = sortedByMovement.filter(m => isTrending(m));
+    // Return top 3
+    return sorted.slice(0, 3);
+}
 
-    // Use trending if available, otherwise fall back to top 3 movers by 24H change
-    let topMover;
-    if (trendingMarkets.length > 0) {
-        topMover = trendingMarkets[0];
-    } else {
-        // Fall back to biggest 24H mover with at least some movement
-        const by24h = [...allMarkets].sort((a, b) => {
-            return Math.abs(b.priceChanges?.hours24 || 0) - Math.abs(a.priceChanges?.hours24 || 0);
-        });
-        topMover = by24h[0];
-    }
-
-    if (!topMover) {
-        headlineEl.innerHTML = '';
-        return;
-    }
-
-    const statement = topMover.statement || topMover.question;
-    const prob = topMover.displayProbability || 50;
+function formatTrendingItem(market) {
+    const statement = market.statement || market.question;
+    const prob = market.displayProbability || 50;
 
     // Show whichever change is more significant
-    const change1h = topMover.priceChanges?.hour1 || 0;
-    const change24h = topMover.priceChanges?.hours24 || 0;
+    const change1h = market.priceChanges?.hour1 || 0;
+    const change24h = market.priceChanges?.hours24 || 0;
     const useHourly = Math.abs(change1h) >= Math.abs(change24h) && Math.abs(change1h) > 0;
     const change = useHourly ? change1h : change24h;
     const period = useHourly ? '1H' : '24H';
     const changeSign = change >= 0 ? '+' : '';
 
-    headlineEl.innerHTML = `
+    return `
         <span class="trending-statement">${statement}</span>
         <span class="trending-stats">${prob}% <span class="trending-change">${changeSign}${change.toFixed(1)}% ${period}</span></span>
     `;
+}
+
+function renderTrendingHeadline() {
+    const headlineEl = document.getElementById('trendingHeadline');
+    if (!headlineEl) return;
+
+    trendingItems = getTopMovers();
+    if (trendingItems.length === 0) {
+        headlineEl.innerHTML = '';
+        return;
+    }
+
+    trendingIndex = 0;
+    headlineEl.innerHTML = formatTrendingItem(trendingItems[0]);
+}
+
+function rotateTrendingHeadline() {
+    const headlineEl = document.getElementById('trendingHeadline');
+    if (!headlineEl || trendingItems.length === 0) return;
+
+    trendingIndex = (trendingIndex + 1) % trendingItems.length;
+
+    // Fade out
+    headlineEl.style.opacity = '0';
+
+    setTimeout(() => {
+        headlineEl.innerHTML = formatTrendingItem(trendingItems[trendingIndex]);
+        // Fade in
+        headlineEl.style.opacity = '1';
+    }, 300);
 }
 
 async function loadMarkets() {
@@ -418,6 +432,9 @@ async function loadMarkets() {
 
 // Initial load
 loadMarkets();
+
+// Rotate trending headlines every 5 seconds
+setInterval(rotateTrendingHeadline, 5000);
 
 // Update the "Updated X ago" text every 10 seconds to keep it current
 setInterval(() => {

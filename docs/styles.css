@@ -65,6 +65,7 @@ h1 {
     font-weight: 500;
     color: #fbbf24;
     min-height: 1.5em;
+    transition: opacity 0.3s ease;
 }
 
 .trending-headline .trending-statement {
