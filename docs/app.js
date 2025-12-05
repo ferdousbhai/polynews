@@ -205,6 +205,13 @@ function isTrending(market) {
     return Math.abs(changes.hours24 || 0) >= 10 || Math.abs(changes.hour1 || 0) >= 5;
 }
 
+function formatChangeInline(change) {
+    if (change === null || change === undefined || change === 0) return '';
+    const sign = change > 0 ? '+' : '';
+    const className = change > 0 ? 'change-positive' : 'change-negative';
+    return `<span class="meta-separator">·</span><span class="${className}">${sign}${change.toFixed(1)}% 24h</span>`;
+}
+
 function createMarketItem(market) {
     const daysRemaining = getDaysRemaining(market.endDateIso);
     const statement = market.statement || market.question;
@@ -218,6 +225,7 @@ function createMarketItem(market) {
         : `https://polymarket.com/${market.slug}`;
 
     const description = market.description || '';
+    const change24h = market.priceChanges?.hours24;
 
     return `
         <div class="market-item${trending ? ' trending' : ''}">
@@ -233,8 +241,7 @@ function createMarketItem(market) {
                     <span class="category-tag">${categoryIcon} ${category}</span>
                     <span class="meta-separator">·</span>
                     <span class="days-tag">${daysRemaining} days left</span>
-                    <span class="meta-separator">·</span>
-                    <span>Closes ${formatDate(market.endDateIso)}</span>
+                    ${formatChangeInline(change24h)}
                 </div>
                 ${description ? `<div class="market-description">${description}</div>` : ''}
             </div>

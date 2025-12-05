@@ -204,6 +204,14 @@ h1 {
     color: var(--text-secondary);
 }
 
+.change-positive {
+    color: var(--positive-text);
+}
+
+.change-negative {
+    color: var(--negative-text);
+}
+
 /* Description - collapsible on hover */
 .market-description {
     font-size: 0.8125rem;
