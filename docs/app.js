@@ -265,35 +265,6 @@ function createMarketItem(market) {
     `;
 }
 
-function renderTrendingHeadline() {
-    const headlineEl = document.getElementById('trendingHeadline');
-    if (!headlineEl || allMarkets.length === 0) {
-        if (headlineEl) headlineEl.innerHTML = '';
-        return;
-    }
-
-    const trending = allMarkets.filter(isTrending);
-
-    let topMovers;
-    if (trending.length >= 3) {
-        topMovers = trending.sort((a, b) =>
-            Math.abs(b.priceChanges?.hours24 || 0) - Math.abs(a.priceChanges?.hours24 || 0)
-        );
-    } else {
-        const sorted = [...allMarkets].sort((a, b) =>
-            Math.abs(b.priceChanges?.hours24 || 0) - Math.abs(a.priceChanges?.hours24 || 0)
-        );
-        topMovers = sorted.slice(0, 3);
-    }
-
-    const html = topMovers.slice(0, 3).map(market => {
-        const statement = market.statement || market.question;
-        return `<div class="trending-item">${statement}</div>`;
-    }).join('');
-
-    headlineEl.innerHTML = html;
-}
-
 async function loadMarkets() {
     const contentEl = document.getElementById('content');
     const lastUpdatedEl = document.getElementById('lastUpdated');
@@ -315,7 +286,6 @@ async function loadMarkets() {
         allMarkets = data.markets;
 
         loadCategoryPreferences();
-        renderTrendingHeadline();
         renderCategoryFilters();
         renderMarkets();
 

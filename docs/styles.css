@@ -61,20 +61,6 @@ h1 {
     color: var(--text-secondary);
 }
 
-.trending-headline {
-    margin-top: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.trending-item {
-    font-size: 0.9rem;
-    line-height: 1.4;
-    color: #fbbf24;
-    font-weight: 500;
-}
-
 .loading {
     text-align: center;
     color: var(--text-secondary);
