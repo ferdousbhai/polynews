@@ -205,12 +205,6 @@ function formatLastUpdated(timestamp) {
     return `Updated ${days} day${days > 1 ? 's' : ''}, ${remainingHours} hour${remainingHours > 1 ? 's' : ''} ago`;
 }
 
-function truncateText(text, maxLength) {
-    if (!text) return '';
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
-}
-
 function formatChange(change, period) {
     if (change === null || change === undefined) {
         return `<span class="change-badge neutral">${period} —</span>`;
@@ -240,13 +234,6 @@ async function fetchMarketsData() {
         throw new Error(`Failed to load data: ${response.status}`);
     }
     return response.json();
-}
-
-function isTrending(market) {
-    const changes = market.priceChanges || {};
-    const abs1h = Math.abs(changes.hour1 || 0);
-    const abs24h = Math.abs(changes.hours24 || 0);
-    return abs1h >= 5 || abs24h >= 10;
 }
 
 function createMarketCard(market) {
