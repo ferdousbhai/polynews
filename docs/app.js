@@ -1,7 +1,6 @@
 let allMarkets = [];
 let selectedCategories = new Set();
 let currentLastUpdated = null;
-let currentSortOrder = 'volume';
 
 const categoryIcons = {
     'Politics': '🏛️',
@@ -29,15 +28,6 @@ function loadCategoryPreferences() {
     } else {
         selectedCategories = new Set(Object.keys(categoryIcons));
     }
-
-    const savedSort = localStorage.getItem('sortOrder');
-    if (savedSort) {
-        currentSortOrder = savedSort;
-        const sortSelect = document.getElementById('sortBy');
-        if (sortSelect) {
-            sortSelect.value = savedSort;
-        }
-    }
 }
 
 function saveCategoryPreferences() {
@@ -52,19 +42,6 @@ function toggleCategory(category) {
     }
     saveCategoryPreferences();
     renderCategoryFilters();
-    renderMarkets();
-}
-
-function resetFilters() {
-    selectedCategories = new Set(Object.keys(categoryIcons));
-    saveCategoryPreferences();
-    renderCategoryFilters();
-    renderMarkets();
-}
-
-function changeSortOrder(sortOrder) {
-    currentSortOrder = sortOrder;
-    localStorage.setItem('sortOrder', sortOrder);
     renderMarkets();
 }
 
@@ -106,28 +83,15 @@ function renderMarkets() {
         return;
     }
 
-    filteredMarkets.sort((a, b) => {
-        if (currentSortOrder === 'volume') {
-            return (b.volume || 0) - (a.volume || 0);
-        } else if (currentSortOrder === 'daysLeft') {
-            const daysA = getDaysRemaining(a.endDateIso);
-            const daysB = getDaysRemaining(b.endDateIso);
-            return daysA - daysB;
-        } else if (currentSortOrder === 'change1h') {
-            const changeA = a.priceChanges?.hour1 || 0;
-            const changeB = b.priceChanges?.hour1 || 0;
-            return Math.abs(changeB) - Math.abs(changeA);
-        } else if (currentSortOrder === 'change24h') {
-            const changeA = a.priceChanges?.hours24 || 0;
-            const changeB = b.priceChanges?.hours24 || 0;
-            return Math.abs(changeB) - Math.abs(changeA);
-        } else if (currentSortOrder === 'change7d') {
-            const changeA = a.priceChanges?.days7 || 0;
-            const changeB = b.priceChanges?.days7 || 0;
-            return Math.abs(changeB) - Math.abs(changeA);
-        }
-        return 0;
-    });
+    const significantMovers = filteredMarkets
+        .filter(m => (m.priceChanges?.hours24 || 0) >= 3)
+        .sort((a, b) => (b.priceChanges?.hours24 || 0) - (a.priceChanges?.hours24 || 0));
+
+    const steadyMarkets = filteredMarkets
+        .filter(m => (m.priceChanges?.hours24 || 0) < 3)
+        .sort((a, b) => (b.volume || 0) - (a.volume || 0));
+
+    filteredMarkets = [...significantMovers, ...steadyMarkets];
 
     const itemsHtml = filteredMarkets.map(market => createMarketItem(market)).join('');
     contentEl.innerHTML = `<div class="market-list">${itemsHtml}</div>`;
@@ -152,17 +116,7 @@ function getDaysRemaining(endDate) {
     const now = new Date();
     const end = new Date(endDate);
     const diff = end - now;
-    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-    return days;
-}
-
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-    });
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
 function formatLastUpdated(timestamp) {
@@ -200,26 +154,17 @@ async function fetchMarketsData() {
     return response.json();
 }
 
-function isTrending(market) {
-    const changes = market.priceChanges || {};
-    return Math.abs(changes.hours24 || 0) >= 10 || Math.abs(changes.hour1 || 0) >= 5;
-}
-
 function formatChangeInline(change) {
     if (change === null || change === undefined || change === 0) return '';
     const sign = change > 0 ? '+' : '';
     const className = change > 0 ? 'change-positive' : 'change-negative';
-    return `<span class="meta-separator">·</span><span class="${className}">${sign}${change.toFixed(1)}% 24h</span>`;
+    return `<span class="meta-separator">·</span><span class="${className}">${sign}${change.toFixed(1)}%</span>`;
 }
 
 function createMarketItem(market) {
     const daysRemaining = getDaysRemaining(market.endDateIso);
     const statement = market.statement || market.question;
     const displayProbability = market.displayProbability || 50;
-    const category = market.category || 'Other';
-    const categoryIcon = categoryIcons[category] || '📊';
-    const trending = isTrending(market);
-
     const url = market.eventSlug
         ? `https://polymarket.com/event/${market.eventSlug}`
         : `https://polymarket.com/${market.slug}`;
@@ -228,7 +173,7 @@ function createMarketItem(market) {
     const change24h = market.priceChanges?.hours24;
 
     return `
-        <div class="market-item${trending ? ' trending' : ''}">
+        <div class="market-item">
             <div class="vote-box">
                 <span class="vote-count">${formatVolume(market.volume)}</span>
             </div>
@@ -238,8 +183,6 @@ function createMarketItem(market) {
                     <span class="probability-inline">${displayProbability}%</span>
                 </div>
                 <div class="market-meta-row">
-                    <span class="category-tag">${categoryIcon} ${category}</span>
-                    <span class="meta-separator">·</span>
                     <span class="days-tag">${daysRemaining} days left</span>
                     ${formatChangeInline(change24h)}
                 </div>
@@ -274,14 +217,7 @@ async function loadMarkets() {
         renderMarkets();
 
     } catch (error) {
-        console.error('Error loading markets:', error);
-        contentEl.innerHTML = `
-            <div class="error">
-                <strong>Error loading predictions</strong><br>
-                ${error.message}<br><br>
-                Please try refreshing the page.
-            </div>
-        `;
+        contentEl.innerHTML = `<div class="error"><strong>Error loading predictions</strong><br>${error.message}</div>`;
     }
 }
 
@@ -299,12 +235,6 @@ setInterval(() => {
 setInterval(async () => {
     try {
         const data = await fetchMarketsData();
-
-        if (data.lastUpdated !== currentLastUpdated) {
-            console.log('New data detected, refreshing...');
-            loadMarkets();
-        }
-    } catch (error) {
-        console.error('Auto-refresh check failed:', error);
-    }
+        if (data.lastUpdated !== currentLastUpdated) loadMarkets();
+    } catch {}
 }, 60000);

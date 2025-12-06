@@ -31,19 +31,6 @@
 
     <div class="container">
         <div class="filters-section">
-            <div class="filters-header">
-                <div class="sort-controls">
-                    <label for="sortBy" class="sort-label">Sort by:</label>
-                    <select id="sortBy" class="sort-select" onchange="changeSortOrder(this.value)">
-                        <option value="volume">Volume</option>
-                        <option value="daysLeft">Days Left</option>
-                        <option value="change1h">1H Change</option>
-                        <option value="change24h">24H Change</option>
-                        <option value="change7d">7D Change</option>
-                    </select>
-                    <a class="filters-reset" onclick="resetFilters()">Show All</a>
-                </div>
-            </div>
             <div class="category-filters" id="categoryFilters">
                 <!-- Categories will be dynamically inserted here -->
             </div>
