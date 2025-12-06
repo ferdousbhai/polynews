@@ -38,21 +38,22 @@ jobs:
         restore-keys: |
           markets-db-
 
-    - name: Restore previous markets.json
-      continue-on-error: true
-      run: |
-        # Download markets.json from GitHub Pages for statement caching
-        BASE_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
-
-        echo "⏳ Downloading previous markets.json from GitHub Pages..."
-        mkdir -p docs
-        if curl -fsSL "$BASE_URL/markets.json" -o docs/markets.json 2>/dev/null; then
-          MARKET_COUNT=$(grep -c '"question"' docs/markets.json || echo "unknown")
-          echo "✅ Restored markets.json ($MARKET_COUNT markets)"
-          echo "💡 Script will reuse statements for unchanged markets (saves LLM costs)"
-        else
-          echo "⚠️  No previous markets.json found (first run)"
-        fi
+    # DISABLED - force regeneration (will re-enable after deployment propagates)
+    # - name: Restore previous markets.json
+    #   continue-on-error: true
+    #   run: |
+    #     # Download markets.json from GitHub Pages for statement caching
+    #     BASE_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+    #
+    #     echo "⏳ Downloading previous markets.json from GitHub Pages..."
+    #     mkdir -p docs
+    #     if curl -fsSL "$BASE_URL/markets.json" -o docs/markets.json 2>/dev/null; then
+    #       MARKET_COUNT=$(grep -c '"question"' docs/markets.json || echo "unknown")
+    #       echo "✅ Restored markets.json ($MARKET_COUNT markets)"
+    #       echo "💡 Script will reuse statements for unchanged markets (saves LLM costs)"
+    #     else
+    #       echo "⚠️  No previous markets.json found (first run)"
+    #     fi
 
     - name: Fetch market data
       env:
