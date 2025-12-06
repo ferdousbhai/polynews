@@ -75,10 +75,6 @@ h1 {
     gap: 16px;
 }
 
-.market-item:first-child {
-    border-top: 1px solid var(--border-color);
-}
-
 .vote-box {
     display: flex;
     flex-direction: column;
@@ -172,6 +168,17 @@ h1 {
     padding: 0 0 16px;
     margin-bottom: 16px;
     border-bottom: 1px solid var(--border-color);
+}
+
+@media (min-width: 769px) {
+    .filters-section {
+        position: sticky;
+        top: 0;
+        background: var(--bg-primary);
+        padding-top: 16px;
+        margin-top: -16px;
+        z-index: 100;
+    }
 }
 
 .category-filters {
