@@ -2,12 +2,16 @@ import json
 import httpx
 import asyncio
 import sqlite3
+import logging
 from datetime import datetime, timedelta, UTC
 from typing import Any
 import os
 from google import genai
 from pydantic import BaseModel, Field, field_validator, ValidationError, ConfigDict
 from decimal import Decimal
+
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+log = logging.getLogger(__name__)
 
 try:
     from dotenv import load_dotenv
@@ -502,8 +506,18 @@ def filter_and_sort_markets(markets: list[dict[str, Any]], historical_snapshots:
     filtered = []
     previous_markets = load_previous_markets()
 
+    # Track filtering reasons
+    skip_reasons = {'no_end_date': 0, 'inactive': 0, 'closed': 0, 'date_range': 0, 'outcome_no': 0, 'prob_low': 0, 'parse_err': 0}
+
     for market in markets:
-        if not market.get('endDateIso') or not market.get('active') or market.get('closed'):
+        if not market.get('endDateIso'):
+            skip_reasons['no_end_date'] += 1
+            continue
+        if not market.get('active'):
+            skip_reasons['inactive'] += 1
+            continue
+        if market.get('closed'):
+            skip_reasons['closed'] += 1
             continue
         try:
             end_date_str = market['endDateIso']
@@ -512,10 +526,18 @@ def filter_and_sort_markets(markets: list[dict[str, Any]], historical_snapshots:
             )
             days_until_end = (end_date - now).days
             if not (0 < days_until_end <= 90):
+                skip_reasons['date_range'] += 1
                 continue
 
             most_likely_outcome, current_probability = get_most_likely_outcome(market)
-            if most_likely_outcome is None or current_probability is None or most_likely_outcome != 'Yes' or current_probability < 55:
+            if most_likely_outcome is None or current_probability is None:
+                skip_reasons['parse_err'] += 1
+                continue
+            if most_likely_outcome == 'No':
+                skip_reasons['outcome_no'] += 1
+                continue
+            if current_probability < 55:
+                skip_reasons['prob_low'] += 1
                 continue
 
             market['mostLikelyOutcome'] = most_likely_outcome
@@ -524,10 +546,18 @@ def filter_and_sort_markets(markets: list[dict[str, Any]], historical_snapshots:
             market['eventSlug'] = events[0].get('slug') if events and isinstance(events, list) and events else None
             filtered.append(market)
         except (ValueError, TypeError):
+            skip_reasons['parse_err'] += 1
             continue
 
+    log.info(f"Filter: {len(markets)} raw → {len(filtered)} after basic (skipped: {skip_reasons})")
+
+    before = len(filtered)
     filtered = deduplicate_related_markets(filtered)
+    log.info(f"Filter: {before} → {len(filtered)} after related dedup (-{before - len(filtered)})")
+
+    before = len(filtered)
     filtered = deduplicate_semantic_redundancy(filtered)
+    log.info(f"Filter: {before} → {len(filtered)} after semantic dedup (-{before - len(filtered)})")
 
     for market in filtered:
         market['priceChanges'] = calculate_price_changes(market, historical_snapshots)
