@@ -157,6 +157,10 @@ h1 {
     color: var(--negative-text);
 }
 
+.change-minor {
+    color: var(--text-tertiary);
+}
+
 .no-results {
     text-align: center;
     color: var(--text-secondary);

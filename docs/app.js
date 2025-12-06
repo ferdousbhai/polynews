@@ -148,6 +148,7 @@ async function fetchMarketsData() {
 
 function formatChangeInline(change) {
     if (change === null || change === undefined || change === 0) return '';
+    if (Math.abs(change) < 1) return '<span class="meta-separator">·</span><span class="change-minor">&lt;1%</span>';
     const sign = change > 0 ? '+' : '';
     const className = change > 0 ? 'change-positive' : 'change-negative';
     return `<span class="meta-separator">·</span><span class="${className}">${sign}${change.toFixed(1)}%</span>`;
