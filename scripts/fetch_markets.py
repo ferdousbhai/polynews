@@ -189,6 +189,7 @@ class MarketInput(BaseModel):
     question: str
     most_likely_outcome: str
     probability: float
+    event_title: str | None = None
 
 class MarketStatement(BaseModel):
     statement: str
@@ -213,10 +214,13 @@ def generate_statements(markets: list[dict[str, Any]]) -> list[MarketStatement]:
     for market in markets:
         most_likely_outcome, probability = get_most_likely_outcome(market)
         if most_likely_outcome and probability is not None:
+            events = market.get('events')
+            event_title = events[0].get('title') if events and isinstance(events, list) and events else None
             market_inputs.append(MarketInput(
                 question=market.get('question', ''),
                 most_likely_outcome=most_likely_outcome,
-                probability=probability
+                probability=probability,
+                event_title=event_title
             ))
 
     if not market_inputs:
@@ -227,28 +231,32 @@ def generate_statements(markets: list[dict[str, Any]]) -> list[MarketStatement]:
 
 Rules:
 - Convert question to short affirmative statement: "[subject] will [verb]"
+- Use the event title for context when the question alone is ambiguous
 - Be concise: remove filler words, unnecessary dates, and verbose phrases
 - Remove question marks, preserve capitalization (GDP, Q1, AI) and symbols (≥, %)
 
-Categories:
+Categories (use existing when possible, create new ones if nothing fits):
 - Politics: Elections, politicians, legislation
 - Sports: Athletes, teams, championships
 - Crypto: Bitcoin, Ethereum, blockchain
 - Economics: Fed, inflation, GDP, interest rates
+- Business: Corporate leadership, M&A, company announcements
 - Entertainment: Movies, celebrities, awards
 - Geopolitics: Wars, conflicts, leaders
-- Technology: AI, tech companies, launches
+- Technology: AI, tech companies, product launches
 - Science: Climate, health, space, disasters
 - Pop Culture: Celebrity relationships, wealth
 - Legal: Trials, lawsuits, verdicts
 - Conspiracy: Fringe theories, supernatural
-- Other: Anything else
+
+IMPORTANT: Never use "Other" as a category. If no existing category fits, create a descriptive new category name.
 
 Examples:
-- "Will Trump win the 2024 presidential election?" → "Trump will win 2024 election." Category: "Politics"
-- "Will Bitcoin reach $150k by end of year?" → "Bitcoin will hit $150k." Category: "Crypto"
-- "Will NVIDIA be the largest company in the world by market cap on December 31?" → "NVIDIA will be largest company by market cap." Category: "Technology"
-- "Will Luigi Mangione be found guilty?" → "Luigi Mangione will be found guilty." Category: "Legal"
+- Question: "Will Trump win the 2024 presidential election?" → Statement: "Trump will win 2024 election." Category: "Politics"
+- Question: "Will Bitcoin reach $150k by end of year?" → Statement: "Bitcoin will hit $150k." Category: "Crypto"
+- Question: "Will NVIDIA be the largest company in the world by market cap on December 31?" → Statement: "NVIDIA will be largest company by market cap." Category: "Technology"
+- Question: "Will Luigi Mangione be found guilty?" → Statement: "Luigi Mangione will be found guilty." Category: "Legal"
+- Question: "Will no CEO be announced in 2025?", Event: "Who will replace Musk as Tesla CEO?" → Statement: "No Musk replacement as Tesla CEO will be announced in 2025." Category: "Business"
 
 Markets to convert:
 """
@@ -256,6 +264,8 @@ Markets to convert:
     # Add market data to prompt
     for i, m in enumerate(market_inputs, 1):
         prompt += f"\n{i}. Question: {m.question}"
+        if m.event_title and m.event_title != m.question:
+            prompt += f"\n   Event: {m.event_title}"
         prompt += f"\n   Outcome: {m.most_likely_outcome} ({m.probability:.1f}%)\n"
 
     try:
@@ -285,7 +295,7 @@ Markets to convert:
                 m = market_inputs[idx]
                 statements.append(MarketStatement(
                     statement=f"{m.question.rstrip('?')}.",
-                    category='Other'
+                    category='Uncategorized'
                 ))
 
         return statements
@@ -294,7 +304,7 @@ Markets to convert:
         print(f"❌ Error generating statements with LLM: {e}")
         print("   Falling back to simple conversion...")
         # Fallback: simple conversion
-        return [MarketStatement(statement=f"{m.question.rstrip('?')}.", category='Other') for m in market_inputs]
+        return [MarketStatement(statement=f"{m.question.rstrip('?')}.", category='Uncategorized') for m in market_inputs]
 
 def load_redundancy_cache() -> dict[str, str | None]:
     if not os.path.exists(DB_FILE):
@@ -528,7 +538,7 @@ def filter_and_sort_markets(markets: list[dict[str, Any]], historical_snapshots:
         if previous_data and previous_data.get('mostLikelyOutcome') == market['mostLikelyOutcome']:
             market['statement'] = previous_data.get('statement', market.get('question'))
             market['displayProbability'] = round(market['currentProbability'], 1)
-            market['category'] = previous_data.get('category', 'Other')
+            market['category'] = previous_data.get('category', 'Uncategorized')
         else:
             markets_needing_statements.append(market)
             market_indices.append(i)
@@ -547,7 +557,7 @@ def filter_and_sort_markets(markets: list[dict[str, Any]], historical_snapshots:
             for i, market in enumerate(markets_needing_statements):
                 filtered[market_indices[i]]['statement'] = market.get('question', '').rstrip('?') + '.'
                 filtered[market_indices[i]]['displayProbability'] = round(market['currentProbability'], 1)
-                filtered[market_indices[i]]['category'] = 'Other'
+                filtered[market_indices[i]]['category'] = 'Uncategorized'
 
     filtered.sort(key=lambda x: float(x.get('volume', 0)), reverse=True)
     return filtered

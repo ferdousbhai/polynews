@@ -2,18 +2,26 @@ let allMarkets = [];
 let selectedCategories = new Set();
 let currentLastUpdated = null;
 
-const ALL_CATEGORIES = ['Politics', 'Sports', 'Crypto', 'Economics', 'Entertainment', 'Geopolitics', 'Technology', 'Science', 'Pop Culture', 'Legal', 'Conspiracy', 'Other'];
+function getAllCategoriesFromData() {
+    return [...new Set(allMarkets.map(m => m.category || 'Uncategorized'))];
+}
 
 function loadCategoryPreferences() {
     const saved = localStorage.getItem('selectedCategories');
     if (saved) {
         try {
-            selectedCategories = new Set(JSON.parse(saved));
+            const savedCategories = new Set(JSON.parse(saved));
+            // Add any new categories from data that aren't in saved preferences
+            const allFromData = getAllCategoriesFromData();
+            allFromData.forEach(cat => {
+                if (!savedCategories.has(cat)) savedCategories.add(cat);
+            });
+            selectedCategories = savedCategories;
         } catch (e) {
-            selectedCategories = new Set(ALL_CATEGORIES);
+            selectedCategories = new Set(getAllCategoriesFromData());
         }
     } else {
-        selectedCategories = new Set(ALL_CATEGORIES);
+        selectedCategories = new Set(getAllCategoriesFromData());
     }
 }
 
@@ -35,13 +43,13 @@ function toggleCategory(category) {
 function renderCategoryFilters() {
     const categoryCounts = {};
     allMarkets.forEach(market => {
-        const category = market.category || 'Other';
+        const category = market.category || 'Uncategorized';
         categoryCounts[category] = (categoryCounts[category] || 0) + 1;
     });
 
     const sortedCategories = Object.keys(categoryCounts).sort((a, b) => {
-        if (a === 'Other') return 1;
-        if (b === 'Other') return -1;
+        if (a === 'Uncategorized') return 1;
+        if (b === 'Uncategorized') return -1;
         return categoryCounts[b] - categoryCounts[a];
     });
 
@@ -62,7 +70,7 @@ function renderCategoryFilters() {
 function renderMarkets() {
     const contentEl = document.getElementById('content');
 
-    let filteredMarkets = allMarkets.filter(m => selectedCategories.has(m.category || 'Other'));
+    let filteredMarkets = allMarkets.filter(m => selectedCategories.has(m.category || 'Uncategorized'));
 
     if (filteredMarkets.length === 0) {
         contentEl.innerHTML = '<div class="no-results">No predictions match the selected categories.</div>';
