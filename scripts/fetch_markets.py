@@ -231,7 +231,7 @@ def generate_statements(markets: list[dict[str, Any]]) -> list[MarketStatement]:
 
 Rules:
 - Convert question to short affirmative statement: "[subject] will [verb]"
-- Use the event title for context when the question alone is ambiguous
+- CRITICAL: When an Event title is provided, you MUST incorporate key details (company names, person names, specific context) from it into the statement. The statement must be understandable without seeing the event title.
 - Be concise: remove filler words, unnecessary dates, and verbose phrases
 - Remove question marks, preserve capitalization (GDP, Q1, AI) and symbols (≥, %)
 
