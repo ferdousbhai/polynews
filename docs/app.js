@@ -2,20 +2,7 @@ let allMarkets = [];
 let selectedCategories = new Set();
 let currentLastUpdated = null;
 
-const categoryIcons = {
-    'Politics': '🏛️',
-    'Sports': '⚽',
-    'Crypto': '₿',
-    'Economics': '📈',
-    'Entertainment': '🎬',
-    'Geopolitics': '🌍',
-    'Technology': '💻',
-    'Science': '🔬',
-    'Pop Culture': '⭐',
-    'Legal': '⚖️',
-    'Conspiracy': '👽',
-    'Other': '📊'
-};
+const ALL_CATEGORIES = ['Politics', 'Sports', 'Crypto', 'Economics', 'Entertainment', 'Geopolitics', 'Technology', 'Science', 'Pop Culture', 'Legal', 'Conspiracy', 'Other'];
 
 function loadCategoryPreferences() {
     const saved = localStorage.getItem('selectedCategories');
@@ -23,10 +10,10 @@ function loadCategoryPreferences() {
         try {
             selectedCategories = new Set(JSON.parse(saved));
         } catch (e) {
-            selectedCategories = new Set(Object.keys(categoryIcons));
+            selectedCategories = new Set(ALL_CATEGORIES);
         }
     } else {
-        selectedCategories = new Set(Object.keys(categoryIcons));
+        selectedCategories = new Set(ALL_CATEGORIES);
     }
 }
 
@@ -60,11 +47,10 @@ function renderCategoryFilters() {
 
     const filtersHtml = sortedCategories.map(category => {
         const count = categoryCounts[category];
-        const icon = categoryIcons[category] || '📊';
         const isActive = selectedCategories.has(category);
         return `
             <div class="category-chip ${isActive ? 'active' : ''}" onclick="toggleCategory('${category}')">
-                <span>${icon} ${category}</span>
+                <span>${category}</span>
                 <span class="category-count">${count}</span>
             </div>
         `;
@@ -83,18 +69,16 @@ function renderMarkets() {
         return;
     }
 
-    const significantMovers = filteredMarkets
-        .filter(m => (m.priceChanges?.hours24 || 0) >= 3)
-        .sort((a, b) => (b.priceChanges?.hours24 || 0) - (a.priceChanges?.hours24 || 0));
+    // Gainers (>=3% 24h change) shown first, sorted by gain; rest maintain volume order from Python backend
+    filteredMarkets = [
+        ...filteredMarkets
+            .filter(m => (m.priceChanges?.hours24 || 0) >= 3)
+            .sort((a, b) => (b.priceChanges?.hours24 || 0) - (a.priceChanges?.hours24 || 0)),
+        ...filteredMarkets
+            .filter(m => (m.priceChanges?.hours24 || 0) < 3)
+    ];
 
-    const steadyMarkets = filteredMarkets
-        .filter(m => (m.priceChanges?.hours24 || 0) < 3)
-        .sort((a, b) => (b.volume || 0) - (a.volume || 0));
-
-    filteredMarkets = [...significantMovers, ...steadyMarkets];
-
-    const itemsHtml = filteredMarkets.map(market => createMarketItem(market)).join('');
-    contentEl.innerHTML = `<div class="market-list">${itemsHtml}</div>`;
+    contentEl.innerHTML = `<div class="market-list">${filteredMarkets.map(market => createMarketItem(market)).join('')}</div>`;
 }
 
 function formatVolume(volume) {
@@ -169,9 +153,6 @@ function createMarketItem(market) {
         ? `https://polymarket.com/event/${market.eventSlug}`
         : `https://polymarket.com/${market.slug}`;
 
-    const description = market.description || '';
-    const change24h = market.priceChanges?.hours24;
-
     return `
         <div class="market-item">
             <div class="vote-box">
@@ -183,10 +164,9 @@ function createMarketItem(market) {
                     <span class="probability-inline">${displayProbability}%</span>
                 </div>
                 <div class="market-meta-row">
-                    <span class="days-tag">${daysRemaining} days left</span>
-                    ${formatChangeInline(change24h)}
+                    <span class="days-tag">${daysRemaining}d</span>
+                    ${formatChangeInline(market.priceChanges?.hours24)}
                 </div>
-                ${description ? `<div class="market-description">${description}</div>` : ''}
             </div>
         </div>
     `;

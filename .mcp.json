@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "puppeteer-mcp-claude": {
-      "command": "npx",
-      "args": ["puppeteer-mcp-claude", "serve"]
-    }
-  }
-}
