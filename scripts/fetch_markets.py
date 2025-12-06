@@ -567,7 +567,7 @@ def filter_and_sort_markets(markets: list[dict[str, Any]], historical_snapshots:
         previous_data = previous_markets.get(market.get('id', ''))
         if previous_data and previous_data.get('mostLikelyOutcome') == market['mostLikelyOutcome']:
             market['statement'] = previous_data.get('statement', market.get('question'))
-            market['displayProbability'] = round(market['currentProbability'], 1)
+            market['displayProbability'] = round(market['currentProbability'])
             market['category'] = previous_data.get('category', 'Uncategorized')
         else:
             markets_needing_statements.append(market)
@@ -580,13 +580,13 @@ def filter_and_sort_markets(markets: list[dict[str, Any]], historical_snapshots:
             for i, statement_obj in enumerate(statements):
                 market = filtered[market_indices[i]]
                 market['statement'] = statement_obj.statement
-                market['displayProbability'] = round(market['currentProbability'], 1)
+                market['displayProbability'] = round(market['currentProbability'])
                 market['category'] = statement_obj.category
         except Exception as e:
             print(f"LLM generation failed: {e}, using fallback")
             for i, market in enumerate(markets_needing_statements):
                 filtered[market_indices[i]]['statement'] = market.get('question', '').rstrip('?') + '.'
-                filtered[market_indices[i]]['displayProbability'] = round(market['currentProbability'], 1)
+                filtered[market_indices[i]]['displayProbability'] = round(market['currentProbability'])
                 filtered[market_indices[i]]['category'] = 'Uncategorized'
 
     filtered.sort(key=lambda x: float(x.get('volume', 0)), reverse=True)
