@@ -146,12 +146,8 @@ async function fetchMarketsData() {
     return response.json();
 }
 
-function formatChangeInline(change) {
-    if (change === null || change === undefined || change === 0) return '';
-    if (Math.abs(change) < 1) return '<span class="meta-separator">·</span><span class="change-minor">&lt;1%</span>';
-    const sign = change > 0 ? '+' : '';
-    const className = change > 0 ? 'change-positive' : 'change-negative';
-    return `<span class="meta-separator">·</span><span class="${className}">${sign}${change.toFixed(1)}%</span>`;
+function isTrending(market) {
+    return (market.priceChanges?.hours24 || 0) >= 3;
 }
 
 function createMarketItem(market) {
@@ -161,20 +157,20 @@ function createMarketItem(market) {
     const url = market.eventSlug
         ? `https://polymarket.com/event/${market.eventSlug}`
         : `https://polymarket.com/${market.slug}`;
+    const trendingClass = isTrending(market) ? ' trending' : '';
 
     return `
-        <div class="market-item">
+        <div class="market-item${trendingClass}">
             <div class="vote-box">
                 <span class="vote-count">${formatVolume(market.volume)}</span>
             </div>
             <div class="market-content">
                 <div class="market-title-row">
                     <a href="${url}" target="_blank" class="market-title">${statement}</a>
-                    <span class="probability-inline">${displayProbability}%</span>
-                </div>
-                <div class="market-meta-row">
-                    <span class="days-tag">${daysRemaining}d</span>
-                    ${formatChangeInline(market.priceChanges?.hours24)}
+                    <div class="probability-group">
+                        <span class="probability-inline">${displayProbability}%</span>
+                        <span class="days-inline">${daysRemaining}d</span>
+                    </div>
                 </div>
             </div>
         </div>
