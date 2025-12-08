@@ -104,7 +104,6 @@ h1 {
     align-items: baseline;
     gap: 12px;
     margin-bottom: 6px;
-    flex-wrap: wrap;
 }
 
 .market-title {
