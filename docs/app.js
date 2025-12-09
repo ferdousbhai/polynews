@@ -162,7 +162,7 @@ function createMarketItem(market) {
     const change24h = market.priceChanges?.hours24 || 0;
 
     const trendingBadge = trending
-        ? `<span class="trending-badge"><svg viewBox="0 0 12 12" fill="none"><path d="M6 2L10 7H7.5V10H4.5V7H2L6 2Z" fill="currentColor"/></svg>+${Math.round(change24h)}%</span>`
+        ? `<span class="trending-badge">${Math.round(change24h)}%</span>`
         : '';
 
     return `
@@ -174,11 +174,11 @@ function createMarketItem(market) {
                 <div class="market-title-row">
                     <a href="${url}" target="_blank" class="market-title">${statement}</a>
                     <div class="probability-group">
+                        ${trendingBadge}
                         <span class="probability-inline">${displayProbability}%</span>
                         <span class="days-inline">${daysRemaining}d</span>
                     </div>
                 </div>
-                ${trendingBadge ? `<div class="trending-row">${trendingBadge}</div>` : ''}
             </div>
         </div>
     `;

@@ -84,7 +84,6 @@ h1 {
 .trending-badge {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
     padding: 2px 6px;
     background: rgba(74, 222, 128, 0.12);
     border-radius: 4px;
@@ -93,11 +92,6 @@ h1 {
     color: var(--positive-text);
     letter-spacing: 0.01em;
     animation: fadeInSlide 0.4s ease-out;
-}
-
-.trending-badge svg {
-    width: 10px;
-    height: 10px;
 }
 
 @keyframes fadeInSlide {
@@ -167,11 +161,6 @@ h1 {
     flex-shrink: 0;
 }
 
-.trending-row {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 4px;
-}
 
 .probability-inline {
     font-size: 1rem;
@@ -265,6 +254,16 @@ h1 {
         font-size: 0.9375rem;
     }
 
+    .market-title-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .probability-group {
+        align-self: flex-end;
+    }
+
     .probability-inline {
         font-size: 0.875rem;
     }
@@ -276,11 +275,6 @@ h1 {
     .trending-badge {
         padding: 2px 5px;
         font-size: 0.625rem;
-    }
-
-    .trending-badge svg {
-        width: 8px;
-        height: 8px;
     }
 }
 
