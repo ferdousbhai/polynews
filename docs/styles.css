@@ -94,12 +94,16 @@ h1 {
 }
 
 .vote-box {
-    min-width: 64px;
-    padding: 12px 8px;
-    background: #1a1a1a;
-    border: 1px solid var(--border);
+    min-width: 56px;
+    padding: 8px;
     text-align: center;
-    font-weight: 700;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+.market-item.trending .vote-box {
+    color: var(--text);
 }
 
 .market-content {
@@ -191,7 +195,7 @@ h1 {
 @media (max-width: 768px) {
     .container { padding: 0 16px; }
     .market-item { gap: 12px; }
-    .vote-box { min-width: 52px; padding: 10px 6px; font-size: 0.875rem; }
+    .vote-box { min-width: 48px; font-size: 0.8125rem; }
     .market-title { font-size: 0.9375rem; }
 }
 
