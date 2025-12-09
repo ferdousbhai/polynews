@@ -76,38 +76,12 @@ h1 {
     position: relative;
 }
 
-/* Trending indicator - subtle glow effect */
+/* Trending indicator - left accent + subtle elevation */
 .market-item.trending {
-    background: linear-gradient(90deg, rgba(74, 222, 128, 0.04) 0%, transparent 40%);
-}
-
-.trending-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 2px 6px;
-    background: rgba(74, 222, 128, 0.12);
-    border-radius: 4px;
-    font-size: 0.6875rem;
-    font-weight: 600;
-    color: var(--positive-text);
-    letter-spacing: 0.01em;
-    animation: fadeInSlide 0.4s ease-out;
-}
-
-@keyframes fadeInSlide {
-    from {
-        opacity: 0;
-        transform: translateX(-4px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-@keyframes subtlePulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+    border-left: 3px solid var(--positive-text);
+    margin-left: -3px;
+    background: rgba(74, 222, 128, 0.03);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 .vote-box {
@@ -254,27 +228,12 @@ h1 {
         font-size: 0.9375rem;
     }
 
-    .market-title-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-    }
-
-    .probability-group {
-        align-self: flex-end;
-    }
-
     .probability-inline {
         font-size: 0.875rem;
     }
 
     .days-inline {
         font-size: 0.6875rem;
-    }
-
-    .trending-badge {
-        padding: 2px 5px;
-        font-size: 0.625rem;
     }
 }
 

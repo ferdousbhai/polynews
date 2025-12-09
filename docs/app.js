@@ -157,13 +157,7 @@ function createMarketItem(market) {
     const url = market.eventSlug
         ? `https://polymarket.com/event/${market.eventSlug}`
         : `https://polymarket.com/${market.slug}`;
-    const trending = isTrending(market);
-    const trendingClass = trending ? ' trending' : '';
-    const change24h = market.priceChanges?.hours24 || 0;
-
-    const trendingBadge = trending
-        ? `<span class="trending-badge">${Math.round(change24h)}%</span>`
-        : '';
+    const trendingClass = isTrending(market) ? ' trending' : '';
 
     return `
         <div class="market-item${trendingClass}">
@@ -174,7 +168,6 @@ function createMarketItem(market) {
                 <div class="market-title-row">
                     <a href="${url}" target="_blank" class="market-title">${statement}</a>
                     <div class="probability-group">
-                        ${trendingBadge}
                         <span class="probability-inline">${displayProbability}%</span>
                         <span class="days-inline">${daysRemaining}d</span>
                     </div>
