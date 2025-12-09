@@ -106,30 +106,12 @@ function getDaysRemaining(endDate) {
 }
 
 function formatLastUpdated(timestamp) {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const totalMinutes = Math.floor((now - date) / 1000 / 60);
-
-    if (totalMinutes < 1) return 'Updated just now';
-    if (totalMinutes < 60) return `Updated ${totalMinutes} minute${totalMinutes > 1 ? 's' : ''} ago`;
-
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-
-    if (hours < 24) {
-        if (minutes === 0) {
-            return `Updated ${hours} hour${hours > 1 ? 's' : ''} ago`;
-        }
-        return `Updated ${hours} hour${hours > 1 ? 's' : ''}, ${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-    }
-
-    const days = Math.floor(hours / 24);
-    const remainingHours = hours % 24;
-
-    if (remainingHours === 0) {
-        return `Updated ${days} day${days > 1 ? 's' : ''} ago`;
-    }
-    return `Updated ${days} day${days > 1 ? 's' : ''}, ${remainingHours} hour${remainingHours > 1 ? 's' : ''} ago`;
+    const mins = Math.floor((Date.now() - new Date(timestamp)) / 60000);
+    if (mins < 1) return 'Updated just now';
+    if (mins < 60) return `Updated ${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `Updated ${hrs}h ago`;
+    return `Updated ${Math.floor(hrs / 24)}d ago`;
 }
 
 async function fetchMarketsData() {
@@ -140,30 +122,24 @@ async function fetchMarketsData() {
     return response.json();
 }
 
-function isTrending(market) {
-    return (market.priceChanges?.hours24 || 0) >= 3;
-}
-
 function createMarketItem(market) {
-    const daysRemaining = getDaysRemaining(market.endDateIso);
-    const statement = market.statement || market.question;
-    const displayProbability = market.displayProbability || 50;
+    const days = getDaysRemaining(market.endDateIso);
+    const title = market.statement || market.question;
+    const prob = market.displayProbability || 50;
     const url = market.eventSlug
         ? `https://polymarket.com/event/${market.eventSlug}`
         : `https://polymarket.com/${market.slug}`;
-    const trendingClass = isTrending(market) ? ' trending' : '';
+    const trending = (market.priceChanges?.hours24 || 0) >= 3 ? ' trending' : '';
 
     return `
-        <div class="market-item${trendingClass}">
-            <div class="vote-box">
-                <span class="vote-count">${formatVolume(market.volume)}</span>
-            </div>
+        <div class="market-item${trending}">
+            <div class="vote-box">${formatVolume(market.volume)}</div>
             <div class="market-content">
                 <div class="market-title-row">
-                    <a href="${url}" target="_blank" class="market-title">${statement}</a>
+                    <a href="${url}" target="_blank" class="market-title">${title}</a>
                     <div class="probability-group">
-                        <span class="probability-inline">${displayProbability}%</span>
-                        <span class="days-inline">${daysRemaining}d</span>
+                        <span>${prob}%</span>
+                        <span>${days}d</span>
                     </div>
                 </div>
             </div>

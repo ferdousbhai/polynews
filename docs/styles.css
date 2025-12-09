@@ -5,23 +5,19 @@
 }
 
 :root {
-    --bg-primary: #0a0a0a;
-    --bg-secondary: #1a1a1a;
-    --text-primary: #e0e0e0;
-    --text-secondary: #a0a0a0;
-    --text-tertiary: #707070;
-    --border-color: #333;
-    --link-color: #7eb8da;
-    --vote-box-bg: #1a1a1a;
-    --vote-box-border: #333;
+    --bg: #0a0a0a;
+    --text: #e0e0e0;
+    --text-muted: #a0a0a0;
+    --text-faint: #707070;
+    --border: #333;
+    --link: #7eb8da;
 }
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background: var(--bg-primary);
-    color: var(--text-primary);
+    background: var(--bg);
+    color: var(--text);
     min-height: 100vh;
-    padding: 0;
 }
 
 .container {
@@ -32,26 +28,23 @@ body {
 
 header {
     padding: 20px 0;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border);
     margin-bottom: 20px;
 }
 
 h1 {
     font-size: 1.5rem;
     font-weight: 600;
-    letter-spacing: -0.02em;
-    color: var(--text-primary);
 }
 
-.loading {
+.loading, .no-results {
     text-align: center;
-    color: var(--text-secondary);
-    font-size: 1rem;
+    color: var(--text-muted);
     padding: 4rem;
 }
 
 .error {
-    background: var(--bg-secondary);
+    background: #1a1a1a;
     border: 1px solid #fecaca;
     color: #ef4444;
     padding: 1.5rem;
@@ -69,9 +62,8 @@ h1 {
     display: flex;
     align-items: flex-start;
     padding: 12px 0;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border);
     gap: 16px;
-    position: relative;
 }
 
 .market-item.trending {
@@ -84,22 +76,12 @@ h1 {
 }
 
 .vote-box {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     min-width: 64px;
     padding: 12px 8px;
-    background: var(--vote-box-bg);
-    border: 1px solid var(--vote-box-border);
-    flex-shrink: 0;
-}
-
-.vote-count {
-    font-size: 1rem;
+    background: #1a1a1a;
+    border: 1px solid var(--border);
+    text-align: center;
     font-weight: 700;
-    color: var(--text-primary);
-    line-height: 1;
 }
 
 .market-content {
@@ -115,10 +97,7 @@ h1 {
 }
 
 .market-title {
-    font-size: 1rem;
-    font-weight: 500;
-    color: var(--link-color);
-    line-height: 1.4;
+    color: var(--link);
     text-decoration: none;
 }
 
@@ -134,35 +113,26 @@ h1 {
     flex-shrink: 0;
 }
 
-.probability-inline {
-    font-size: 1rem;
+.probability-group span:first-child {
     font-weight: 700;
-    color: var(--text-primary);
 }
 
-.days-inline {
+.probability-group span:last-child {
     font-size: 0.75rem;
-    color: var(--text-tertiary);
-}
-
-.no-results {
-    text-align: center;
-    color: var(--text-secondary);
-    font-size: 1rem;
-    padding: 4rem;
+    color: var(--text-faint);
 }
 
 .filters-section {
     padding: 0 0 16px;
     margin-bottom: 16px;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border);
 }
 
 @media (min-width: 769px) {
     .filters-section {
         position: sticky;
         top: 0;
-        background: var(--bg-primary);
+        background: var(--bg);
         padding-top: 16px;
         margin-top: -16px;
         z-index: 100;
@@ -179,88 +149,52 @@ h1 {
     padding: 4px 0;
     margin-right: 16px;
     background: transparent;
-    color: var(--text-secondary);
+    border: none;
+    color: var(--text-muted);
     font-size: 0.8125rem;
     cursor: pointer;
-    user-select: none;
     display: inline-flex;
-    align-items: center;
     gap: 4px;
-    white-space: nowrap;
-    border: none;
 }
 
-.category-chip:hover {
-    color: var(--text-primary);
+.category-chip:hover, .category-chip.active {
+    color: var(--text);
 }
 
 .category-chip.active {
-    color: var(--text-primary);
     font-weight: 600;
 }
 
 .category-count {
     font-size: 0.75rem;
-    color: var(--text-tertiary);
+    color: var(--text-faint);
 }
 
 @media (max-width: 768px) {
-    .container {
-        padding: 0 16px;
-    }
-
-    .market-item {
-        gap: 12px;
-    }
-
-    .vote-box {
-        min-width: 52px;
-        padding: 10px 6px;
-    }
-
-    .vote-count {
-        font-size: 0.875rem;
-    }
-
-    .market-title {
-        font-size: 0.9375rem;
-    }
-
-    .probability-inline {
-        font-size: 0.875rem;
-    }
-
-    .days-inline {
-        font-size: 0.6875rem;
-    }
+    .container { padding: 0 16px; }
+    .market-item { gap: 12px; }
+    .vote-box { min-width: 52px; padding: 10px 6px; font-size: 0.875rem; }
+    .market-title { font-size: 0.9375rem; }
 }
 
 footer {
     margin-top: 48px;
     padding: 24px 0;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--border);
+    font-size: 0.75rem;
+    color: var(--text-faint);
 }
 
 footer .container {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.75rem;
-    color: var(--text-tertiary);
 }
 
 footer a {
-    color: var(--text-secondary);
-    text-decoration: none;
-}
-
-footer a:hover {
-    text-decoration: underline;
+    color: var(--text-muted);
 }
 
 @media (max-width: 768px) {
-    footer .container {
-        flex-direction: column;
-        gap: 8px;
-    }
+    footer .container { flex-direction: column; gap: 8px; }
 }
