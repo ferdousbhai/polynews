@@ -9,17 +9,12 @@ function getAllCategoriesFromData() {
 function loadCategoryPreferences() {
     const saved = localStorage.getItem('selectedCategories');
     if (saved) {
-        try {
-            const savedCategories = new Set(JSON.parse(saved));
-            // Add any new categories from data that aren't in saved preferences
-            const allFromData = getAllCategoriesFromData();
-            allFromData.forEach(cat => {
-                if (!savedCategories.has(cat)) savedCategories.add(cat);
-            });
-            selectedCategories = savedCategories;
-        } catch (e) {
-            selectedCategories = new Set(getAllCategoriesFromData());
-        }
+        const savedCategories = new Set(JSON.parse(saved));
+        const allFromData = getAllCategoriesFromData();
+        allFromData.forEach(cat => {
+            if (!savedCategories.has(cat)) savedCategories.add(cat);
+        });
+        selectedCategories = savedCategories;
     } else {
         selectedCategories = new Set(getAllCategoriesFromData());
     }
@@ -77,7 +72,6 @@ function renderMarkets() {
         return;
     }
 
-    // Gainers (>=3% 24h change) shown first, sorted by gain; rest maintain volume order from Python backend
     filteredMarkets = [
         ...filteredMarkets
             .filter(m => (m.priceChanges?.hours24 || 0) >= 3)
