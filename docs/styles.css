@@ -167,6 +167,12 @@ h1 {
     flex-shrink: 0;
 }
 
+.trending-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 4px;
+}
+
 .probability-inline {
     font-size: 1rem;
     font-weight: 700;

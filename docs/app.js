@@ -174,11 +174,11 @@ function createMarketItem(market) {
                 <div class="market-title-row">
                     <a href="${url}" target="_blank" class="market-title">${statement}</a>
                     <div class="probability-group">
-                        ${trendingBadge}
                         <span class="probability-inline">${displayProbability}%</span>
                         <span class="days-inline">${daysRemaining}d</span>
                     </div>
                 </div>
+                ${trendingBadge ? `<div class="trending-row">${trendingBadge}</div>` : ''}
             </div>
         </div>
     `;
