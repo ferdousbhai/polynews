@@ -1,3 +1,6 @@
+const POLYMARKET_URL = 'https://polymarket.com';
+const POLYMARKET_REF = '?via=ferdous-bhai';
+
 let allMarkets = [];
 let selectedCategories = new Set();
 let currentLastUpdated = null;
@@ -52,10 +55,12 @@ function renderCategoryFilters() {
         const count = categoryCounts[category];
         const isActive = selectedCategories.has(category);
         return `
-            <div class="category-chip ${isActive ? 'active' : ''}" onclick="toggleCategory('${category}')">
+            <button class="category-chip ${isActive ? 'active' : ''}"
+                    onclick="toggleCategory('${category}')"
+                    aria-pressed="${isActive}">
                 <span>${category}</span>
                 <span class="category-count">${count}</span>
-            </div>
+            </button>
         `;
     }).join('');
 
@@ -72,22 +77,22 @@ function renderMarkets() {
         return;
     }
 
-    filteredMarkets = [
-        ...filteredMarkets
-            .filter(m => (m.priceChanges?.hours24 || 0) >= 3)
-            .sort((a, b) => (b.priceChanges?.hours24 || 0) - (a.priceChanges?.hours24 || 0)),
-        ...filteredMarkets
-            .filter(m => (m.priceChanges?.hours24 || 0) < 3)
-    ];
+    // Separate trending and regular markets
+    const trendingMarkets = filteredMarkets
+        .filter(m => (m.priceChanges?.hours24 || 0) >= 3)
+        .sort((a, b) => (b.priceChanges?.hours24 || 0) - (a.priceChanges?.hours24 || 0));
 
-    contentEl.innerHTML = `<div class="market-list">${filteredMarkets.map(market => createMarketItem(market)).join('')}</div>`;
+    const regularMarkets = filteredMarkets
+        .filter(m => (m.priceChanges?.hours24 || 0) < 3);
+
+    const sortedMarkets = [...trendingMarkets, ...regularMarkets];
+
+    contentEl.innerHTML = `<div class="market-list">${sortedMarkets.map(market => createMarketItem(market)).join('')}</div>`;
 }
 
 function formatVolume(volume) {
     const num = Number(volume);
-    if (!num || isNaN(num)) {
-        return '0';
-    }
+    if (!num || isNaN(num)) return '0';
 
     if (num >= 1000000) {
         return `${(num / 1000000).toFixed(1)}M`;
@@ -127,23 +132,31 @@ function createMarketItem(market) {
     const title = market.statement || market.question;
     const prob = market.displayProbability || 50;
     const url = market.eventSlug
-        ? `https://polymarket.com/event/${market.eventSlug}`
-        : `https://polymarket.com/${market.slug}`;
-    const trending = (market.priceChanges?.hours24 || 0) >= 3 ? ' trending' : '';
+        ? `${POLYMARKET_URL}/event/${market.eventSlug}${POLYMARKET_REF}`
+        : `${POLYMARKET_URL}/${market.slug}${POLYMARKET_REF}`;
+    const isTrending = (market.priceChanges?.hours24 || 0) >= 3;
+    const priceChange = market.priceChanges?.hours24 || 0;
+
+    // Determine probability color class
+    const probClass = prob >= 70 ? '' : 'medium';
 
     return `
-        <div class="market-item${trending}">
-            <div class="vote-box">${formatVolume(market.volume)}</div>
+        <article class="market-item${isTrending ? ' trending' : ''}">
+            <div class="vote-box">
+                <span class="volume-value">${formatVolume(market.volume)}</span>
+                <span class="volume-label">vol</span>
+            </div>
             <div class="market-content">
+                ${isTrending ? `<div class="trending-badge">${priceChange.toFixed(0)}% today</div>` : ''}
                 <div class="market-title-row">
-                    <a href="${url}" target="_blank" class="market-title">${title}</a>
+                    <a href="${url}" target="_blank" rel="noopener" class="market-title">${title}</a>
                     <div class="probability-group">
-                        <span>${prob}%</span>
-                        <span>${days}d</span>
+                        <span class="probability ${probClass}">${prob}%</span>
+                        <span class="days-remaining">${days}d</span>
                     </div>
                 </div>
             </div>
-        </div>
+        </article>
     `;
 }
 
@@ -176,8 +189,10 @@ async function loadMarkets() {
     }
 }
 
+// Initialize
 loadMarkets();
 
+// Update "last updated" text every 10 seconds
 setInterval(() => {
     if (currentLastUpdated) {
         const lastUpdatedEl = document.getElementById('lastUpdated');
@@ -187,6 +202,7 @@ setInterval(() => {
     }
 }, 10000);
 
+// Check for new data every 60 seconds
 setInterval(async () => {
     try {
         const data = await fetchMarketsData();

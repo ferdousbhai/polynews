@@ -3,28 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prediction Market News & Forecasts | PolyNews</title>
+    <title>PolyNews - Prediction Market Forecasts</title>
     <meta name="description" content="Real-time prediction market news and forecasts. Track what's likely to happen in politics, crypto, sports, and more based on Polymarket odds.">
     <link rel="canonical" href="https://polynews.media/">
     <meta name="theme-color" content="#0a0a0a">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://polynews.media/">
-    <meta property="og:title" content="Prediction Market News & Forecasts | PolyNews">
+    <meta property="og:title" content="PolyNews - Prediction Market Forecasts">
     <meta property="og:description" content="Real-time prediction market news and forecasts. Track what's likely to happen in politics, crypto, sports, and more based on Polymarket odds.">
     <meta name="twitter:card" content="summary">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔮</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <header><div class="container"><h1>PolyNews</h1></div></header>
-    <div class="container">
-        <div class="filters-section"><div class="category-filters" id="categoryFilters"></div></div>
-        <div id="content"><div class="loading">Loading predictions...</div></div>
-    </div>
+    <header>
+        <div class="container">
+            <div class="logo">
+                <span class="logo-icon">🔮</span>
+                <h1>PolyNews</h1>
+            </div>
+            <div class="header-meta">
+                <span class="live-dot"></span>
+                <span>Live</span>
+            </div>
+        </div>
+    </header>
+    <main class="container">
+        <div class="filters-section">
+            <div class="category-filters" id="categoryFilters"></div>
+        </div>
+        <div id="content">
+            <div class="loading">Loading predictions...</div>
+        </div>
+    </main>
     <footer>
         <div class="container">
             <span id="lastUpdated"></span>
-            <span>Markets closing within 90 days · <a href="https://polymarket.com" target="_blank">Polymarket</a></span>
+            <span>Markets closing within 90 days · <a href="https://polymarket.com?via=ferdous-bhai" target="_blank" rel="noopener">Polymarket</a></span>
         </div>
     </footer>
     <script src="app.js"></script>
