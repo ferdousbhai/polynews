@@ -6,6 +6,8 @@ import logging
 from datetime import datetime, timedelta, UTC
 from typing import Any
 import os
+import boto3
+from botocore.config import Config
 from google import genai
 from pydantic import BaseModel, Field, field_validator, ValidationError, ConfigDict
 from decimal import Decimal
@@ -598,10 +600,48 @@ class DecimalEncoder(json.JSONEncoder):
             return float(obj)
         return super().default(obj)
 
+def upload_to_r2(data: dict[str, Any]) -> bool:
+    """Upload markets.json to Cloudflare R2 bucket."""
+    account_id = os.getenv('CLOUDFLARE_ACCOUNT_ID')
+    access_key = os.getenv('R2_ACCESS_KEY_ID')
+    secret_key = os.getenv('R2_SECRET_ACCESS_KEY')
+    bucket_name = os.getenv('R2_BUCKET_NAME', 'polynews')
+
+    if not all([account_id, access_key, secret_key]):
+        print("⚠️  R2 credentials not found, skipping upload")
+        return False
+
+    try:
+        s3 = boto3.client(
+            's3',
+            endpoint_url=f'https://{account_id}.r2.cloudflarestorage.com',
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            config=Config(signature_version='s3v4'),
+        )
+
+        json_data = json.dumps(data, cls=DecimalEncoder)
+        s3.put_object(
+            Bucket=bucket_name,
+            Key='markets.json',
+            Body=json_data,
+            ContentType='application/json',
+        )
+        print(f"✅ Uploaded to R2: {bucket_name}/markets.json")
+        return True
+    except Exception as e:
+        print(f"❌ R2 upload failed: {e}")
+        return False
+
 def save_markets(markets: list[dict[str, Any]]) -> None:
     data = {'lastUpdated': datetime.now(UTC).isoformat().replace('+00:00', 'Z'), 'marketCount': len(markets), 'markets': markets}
+
+    # Save locally
     with open(OUTPUT_FILE, 'w') as f:
         json.dump(data, f, indent=2, cls=DecimalEncoder)
+
+    # Upload to R2
+    upload_to_r2(data)
 
 def save_historical_snapshot(markets: list[dict[str, Any]]) -> None:
     timestamp = datetime.now(UTC).strftime('%Y-%m-%d_%H-%M')

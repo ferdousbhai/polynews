@@ -1,18 +1,9 @@
-name: Fetch Polymarket Data and Deploy
+name: Fetch Polymarket Data
 
 on:
   schedule:
-    # Run every hour
-    - cron: '0 * * * *'
+    - cron: '0 * * * *'  # Every hour
   workflow_dispatch:
-  push:
-    branches: [ master ]
-
-# Required for GitHub Pages deployment
-permissions:
-  contents: write
-  pages: write
-  id-token: write
 
 jobs:
   fetch-data:
@@ -38,25 +29,13 @@ jobs:
         restore-keys: |
           markets-db-
 
-    - name: Restore previous markets.json
-      continue-on-error: true
-      run: |
-        # Download markets.json from GitHub Pages for statement caching
-        BASE_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
-
-        echo "⏳ Downloading previous markets.json from GitHub Pages..."
-        mkdir -p docs
-        if curl -fsSL "$BASE_URL/markets.json" -o docs/markets.json 2>/dev/null; then
-          MARKET_COUNT=$(grep -c '"question"' docs/markets.json || echo "unknown")
-          echo "✅ Restored markets.json ($MARKET_COUNT markets)"
-          echo "💡 Script will reuse statements for unchanged markets (saves LLM costs)"
-        else
-          echo "⚠️  No previous markets.json found (first run)"
-        fi
-
-    - name: Fetch market data
+    - name: Fetch market data and upload to R2
       env:
         GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        R2_BUCKET_NAME: polynews
       run: uv run python scripts/fetch_markets.py
 
     - name: Save SQLite database cache
@@ -65,29 +44,3 @@ jobs:
       with:
         path: markets.db
         key: markets-db-${{ github.run_id }}
-
-    - name: Prepare deployment files
-      run: |
-        echo "📦 Deployment contents:"
-        ls -lah docs/
-        echo ""
-        echo "📊 Artifact size:"
-        du -sh docs
-
-    - name: Upload GitHub Pages artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: docs
-
-  deploy:
-    needs: fetch-data
-    runs-on: ubuntu-latest
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4

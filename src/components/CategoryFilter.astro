@@ -1,0 +1,80 @@
+---
+interface Props {
+  categories: string[];
+  counts: Record<string, number>;
+}
+
+const { categories, counts } = Astro.props;
+
+// Sort categories: by count descending, Uncategorized last
+const sorted = [...categories].sort((a, b) => {
+  if (a === 'Uncategorized') return 1;
+  if (b === 'Uncategorized') return -1;
+  return counts[b] - counts[a];
+});
+---
+
+<div class="category-filters" id="category-filters">
+  {sorted.map((cat) => (
+    <div class="category-chip active" data-category={cat}>
+      <span>{cat}</span>
+      <span class="category-count">{counts[cat]}</span>
+    </div>
+  ))}
+</div>
+
+<script>
+  function initCategoryFilter() {
+    const filtersContainer = document.getElementById('category-filters');
+    if (!filtersContainer) return;
+
+    const chips = filtersContainer.querySelectorAll('.category-chip');
+    const categories = Array.from(chips).map(c => c.getAttribute('data-category')!);
+
+    // Load saved preferences
+    let selected: Set<string>;
+    try {
+      const saved = localStorage.getItem('selectedCategories');
+      selected = saved ? new Set(JSON.parse(saved)) : new Set(categories);
+    } catch {
+      selected = new Set(categories);
+    }
+
+    function updateVisibility() {
+      // Update chip styles
+      chips.forEach(chip => {
+        const cat = chip.getAttribute('data-category')!;
+        chip.classList.toggle('active', selected.has(cat));
+      });
+
+      // Show/hide markets
+      document.querySelectorAll('.market-item').forEach((el) => {
+        const cat = el.getAttribute('data-category') || 'Uncategorized';
+        (el as HTMLElement).style.display = selected.has(cat) ? '' : 'none';
+      });
+
+      // Persist
+      localStorage.setItem('selectedCategories', JSON.stringify([...selected]));
+    }
+
+    // Initial update
+    updateVisibility();
+
+    // Add click handlers
+    chips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        const cat = chip.getAttribute('data-category')!;
+        if (selected.has(cat)) {
+          selected.delete(cat);
+        } else {
+          selected.add(cat);
+        }
+        updateVisibility();
+      });
+    });
+  }
+
+  // Run on initial load and on navigation
+  initCategoryFilter();
+  document.addEventListener('astro:after-swap', initCategoryFilter);
+</script>

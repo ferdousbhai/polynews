@@ -1,0 +1,117 @@
+---
+import Layout from '../layouts/Layout.astro';
+import CategoryFilter from '../components/CategoryFilter.astro';
+
+// Fetch from R2 in production, fallback to local file in dev
+const R2_URL = import.meta.env.R2_PUBLIC_URL;
+
+let marketsData: { markets: any[]; lastUpdated: string };
+
+if (R2_URL) {
+  const response = await fetch(`${R2_URL}/markets.json`);
+  marketsData = await response.json();
+} else {
+  // Local development fallback
+  marketsData = await import('../../data/markets.json');
+}
+
+const { markets, lastUpdated } = marketsData;
+
+// Pre-compute categories
+const categories = [...new Set(markets.map((m: any) => m.category || 'Uncategorized'))];
+const categoryCounts = categories.reduce((acc: Record<string, number>, cat: string) => {
+  acc[cat] = markets.filter((m: any) => (m.category || 'Uncategorized') === cat).length;
+  return acc;
+}, {} as Record<string, number>);
+
+// Sort: trending first (24h change >= 3%), then by volume
+const sortedMarkets = [
+  ...markets
+    .filter((m: any) => (m.priceChanges?.hours24 || 0) >= 3)
+    .sort((a: any, b: any) => (b.priceChanges?.hours24 || 0) - (a.priceChanges?.hours24 || 0)),
+  ...markets.filter((m: any) => (m.priceChanges?.hours24 || 0) < 3)
+];
+
+function formatVolume(vol: number): string {
+  if (vol >= 1_000_000) return `${(vol / 1_000_000).toFixed(1)}M`;
+  if (vol >= 1_000) return `${(vol / 1_000).toFixed(0)}K`;
+  return `${vol.toFixed(0)}`;
+}
+
+function getDaysRemaining(endDate: string): number {
+  return Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+}
+
+function formatLastUpdated(timestamp: string): string {
+  const mins = Math.floor((Date.now() - new Date(timestamp).getTime()) / 60000);
+  if (mins < 1) return 'Updated just now';
+  if (mins < 60) return `Updated ${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `Updated ${hrs}h ago`;
+  return `Updated ${Math.floor(hrs / 24)}d ago`;
+}
+
+const POLYMARKET_URL = 'https://polymarket.com';
+const POLYMARKET_REF = '?via=ferdous-bhai';
+---
+
+<Layout title="PolyNews - Prediction Market Forecasts">
+  <header>
+    <div class="container">
+      <div class="logo">
+        <span class="logo-icon">🔮</span>
+        <h1>PolyNews</h1>
+      </div>
+      <div class="header-meta">
+        <span class="live-dot"></span>
+        <span>Live</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="filters-section">
+      <CategoryFilter
+        categories={categories}
+        counts={categoryCounts}
+      />
+    </div>
+
+    <div class="market-list" id="market-list">
+      {sortedMarkets.map((market: any) => {
+        const trending = (market.priceChanges?.hours24 || 0) >= 3;
+        const url = market.eventSlug
+          ? `${POLYMARKET_URL}/event/${market.eventSlug}${POLYMARKET_REF}`
+          : `${POLYMARKET_URL}/${market.slug}${POLYMARKET_REF}`;
+        const days = getDaysRemaining(market.endDateIso);
+
+        return (
+          <div
+            class={`market-item${trending ? ' trending' : ''}`}
+            data-category={market.category || 'Uncategorized'}
+          >
+            <div class="vote-box">{formatVolume(Number(market.volume))}</div>
+            <div class="market-content">
+              <div class="market-title-row">
+                <a href={url} target="_blank" rel="noopener" class="market-title">
+                  {market.statement || market.question}
+                </a>
+                <div class="probability-group">
+                  <span>{market.displayProbability}%</span>
+                  <span>{days}d</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <span>{formatLastUpdated(lastUpdated)}</span>
+      <span>Markets closing within 90 days · <a href={`${POLYMARKET_URL}${POLYMARKET_REF}`} target="_blank" rel="noopener">Polymarket</a></span>
+    </div>
+  </footer>
+</Layout>
