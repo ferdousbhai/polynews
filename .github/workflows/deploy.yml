@@ -6,37 +6,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy-pages:
-    name: Deploy Frontend
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: .
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Create placeholder data for build
-        run: |
-          mkdir -p data
-          echo '{"markets":[],"lastUpdated":""}' > data/markets.json
-
-      - run: pnpm build
-
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: pages deploy dist --project-name=polynews
-
   deploy-worker:
     name: Deploy Worker
     runs-on: ubuntu-latest
