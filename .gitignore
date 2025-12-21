@@ -10,7 +10,6 @@ __pycache__/
 node_modules/
 dist/
 .astro/
-pnpm-lock.yaml
 
 # Wrangler local state
 .wrangler/
