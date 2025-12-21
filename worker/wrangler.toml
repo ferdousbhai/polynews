@@ -1,0 +1,25 @@
+name = "polynews-worker"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Cron trigger - runs every hour
+[triggers]
+crons = ["0 * * * *"]
+
+# D1 Database for caching (redundancy cache + snapshots)
+[[d1_databases]]
+binding = "DB"
+database_name = "polynews-cache"
+database_id = "e2ba97e8-0167-415f-97cf-41bf6acc79a1"
+
+# R2 Bucket for output
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "polynews"
+
+# Environment variables (set via wrangler secret)
+# GOOGLE_API_KEY - for Gemini LLM calls
+
+[vars]
+POLYMARKET_API_URL = "https://gamma-api.polymarket.com/markets"

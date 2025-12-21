@@ -2,8 +2,9 @@
 import Layout from '../layouts/Layout.astro';
 import CategoryFilter from '../components/CategoryFilter.astro';
 
-// Fetch from R2 in production, fallback to local file in dev
-const R2_URL = import.meta.env.R2_PUBLIC_URL;
+// Access runtime environment for Cloudflare SSR
+const runtime = Astro.locals.runtime;
+const R2_URL = runtime?.env?.R2_PUBLIC_URL || import.meta.env.R2_PUBLIC_URL;
 
 let marketsData: { markets: any[]; lastUpdated: string };
 

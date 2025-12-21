@@ -12,8 +12,12 @@ dist/
 .astro/
 pnpm-lock.yaml
 
+# Wrangler local state
+.wrangler/
+
 # Environment variables
 .env
+.dev.vars
 
 # IDE
 .vscode/

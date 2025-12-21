@@ -4,5 +4,4 @@ compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "./dist"
 
 [vars]
-# Set in Cloudflare dashboard or via wrangler secret
-# R2_PUBLIC_URL = "https://your-bucket.r2.dev"
+R2_PUBLIC_URL = "https://data.polynews.media"
