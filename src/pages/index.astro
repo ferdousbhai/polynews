@@ -4,17 +4,10 @@ import CategoryFilter from '../components/CategoryFilter.astro';
 
 // Access runtime environment for Cloudflare SSR
 const runtime = Astro.locals.runtime;
-const R2_URL = runtime?.env?.R2_PUBLIC_URL || import.meta.env.R2_PUBLIC_URL;
+const R2_URL = runtime?.env?.R2_PUBLIC_URL || import.meta.env.R2_PUBLIC_URL || 'https://data.polynews.media';
 
-let marketsData: { markets: any[]; lastUpdated: string };
-
-if (R2_URL) {
-  const response = await fetch(`${R2_URL}/markets.json`);
-  marketsData = await response.json();
-} else {
-  // Local development fallback
-  marketsData = await import('../../data/markets.json');
-}
+const response = await fetch(`${R2_URL}/markets.json`);
+const marketsData: { markets: any[]; lastUpdated: string } = await response.json();
 
 const { markets, lastUpdated } = marketsData;
 
