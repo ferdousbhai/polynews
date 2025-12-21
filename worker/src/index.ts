@@ -1,11 +1,14 @@
 // Cloudflare Worker for fetching and processing Polymarket data
 // Runs on a cron schedule, stores cache in D1, outputs to R2
 
+import { GoogleGenAI, Type } from "@google/genai";
+
 export interface Env {
   DB: D1Database;
   R2: R2Bucket;
   GOOGLE_API_KEY: string;
   POLYMARKET_API_URL: string;
+  GEMINI_MODEL: string;
 }
 
 // Types
@@ -69,7 +72,6 @@ interface OutputData {
 }
 
 // Constants
-const MODEL = "gemini-2.5-flash-lite";
 const API_PAGE_LIMIT = 100;
 const MAX_PAGES = 5;
 
@@ -347,7 +349,8 @@ async function saveStatementCache(
 
 // Call Gemini LLM for redundancy check
 async function checkRedundancyLLM(
-  apiKey: string,
+  ai: GoogleGenAI,
+  model: string,
   newMarkets: PolymarketMarket[],
   existingMarkets: PolymarketMarket[] = []
 ): Promise<Map<string, { redundantOf: string | null; reason: string }>> {
@@ -390,40 +393,24 @@ Return IDs of predictions to REMOVE. When in doubt, keep both.
   }
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.1,
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: "object",
-              properties: {
-                redundant_market_ids: { type: "array", items: { type: "string" } },
-                reasoning: { type: "array", items: { type: "string" } },
-              },
-              required: ["redundant_market_ids", "reasoning"],
-            },
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        temperature: 0.1,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            redundant_market_ids: { type: Type.ARRAY, items: { type: Type.STRING } },
+            reasoning: { type: Type.ARRAY, items: { type: Type.STRING } },
           },
-        }),
-      }
-    );
+          required: ["redundant_market_ids", "reasoning"],
+        },
+      },
+    });
 
-    if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status}`);
-    }
-
-    const data = (await response.json()) as {
-      candidates: Array<{ content: { parts: Array<{ text: string }> } }>;
-    };
-    const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!resultText) throw new Error("Empty response from Gemini");
-
-    const result = JSON.parse(resultText) as RedundancyResult;
+    const result = JSON.parse(response.text ?? "{}") as RedundancyResult;
     const redundantIds = new Set(result.redundant_market_ids);
 
     for (let i = 0; i < newMarkets.length; i++) {
@@ -449,7 +436,8 @@ Return IDs of predictions to REMOVE. When in doubt, keep both.
 
 // Call Gemini LLM to generate statements
 async function generateStatements(
-  apiKey: string,
+  ai: GoogleGenAI,
+  model: string,
   markets: PolymarketMarket[]
 ): Promise<MarketStatement[]> {
   if (markets.length === 0) return [];
@@ -480,43 +468,27 @@ ${marketInputs.map((m, i) => `${i + 1}. Question: ${m.question}${m.eventTitle &&
 `;
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.3,
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  statement: { type: "string" },
-                  category: { type: "string" },
-                },
-                required: ["statement", "category"],
-              },
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        temperature: 0.3,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              statement: { type: Type.STRING },
+              category: { type: Type.STRING },
             },
+            required: ["statement", "category"],
           },
-        }),
-      }
-    );
+        },
+      },
+    });
 
-    if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status}`);
-    }
-
-    const data = (await response.json()) as {
-      candidates: Array<{ content: { parts: Array<{ text: string }> } }>;
-    };
-    const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!resultText) throw new Error("Empty response from Gemini");
-
-    const statements = JSON.parse(resultText) as MarketStatement[];
+    const statements = JSON.parse(response.text ?? "[]") as MarketStatement[];
 
     // Pad with fallbacks if needed
     while (statements.length < markets.length) {
@@ -586,6 +558,7 @@ async function filterAndProcessMarkets(
   markets: PolymarketMarket[],
   snapshots: Record<string, HistoricalSnapshot | null>
 ): Promise<ProcessedMarket[]> {
+  const ai = new GoogleGenAI({ apiKey: env.GOOGLE_API_KEY });
   const now = Date.now();
   const filtered: Array<PolymarketMarket & { mostLikelyOutcome: string; currentProbability: number }> = [];
 
@@ -639,7 +612,7 @@ async function filterAndProcessMarkets(
 
   if (newMarkets.length > 0) {
     console.log(`Checking ${newMarkets.length} new markets for redundancy...`);
-    const decisions = await checkRedundancyLLM(env.GOOGLE_API_KEY, newMarkets, cachedMarkets);
+    const decisions = await checkRedundancyLLM(ai, env.GEMINI_MODEL, newMarkets, cachedMarkets);
     await saveRedundancyCache(env.DB, decisions);
 
     for (const m of newMarkets) {
@@ -691,7 +664,7 @@ async function filterAndProcessMarkets(
 
   if (marketsNeedingStatements.length > 0) {
     console.log(`Generating ${marketsNeedingStatements.length} statements via LLM...`);
-    const statements = await generateStatements(env.GOOGLE_API_KEY, marketsNeedingStatements);
+    const statements = await generateStatements(ai, env.GEMINI_MODEL, marketsNeedingStatements);
 
     const newStatements = new Map<string, { statement: string; category: string; outcome: string }>();
 
