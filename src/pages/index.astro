@@ -18,13 +18,50 @@ const categoryCounts = categories.reduce((acc: Record<string, number>, cat: stri
   return acc;
 }, {} as Record<string, number>);
 
-// Sort: trending first (24h change >= 3%), then by volume
-const sortedMarkets = [
-  ...markets
-    .filter((m: any) => (m.priceChanges?.hours24 || 0) >= 3)
-    .sort((a: any, b: any) => (b.priceChanges?.hours24 || 0) - (a.priceChanges?.hours24 || 0)),
-  ...markets.filter((m: any) => (m.priceChanges?.hours24 || 0) < 3)
-];
+// Helper to safely get price change
+function getChange(m: any, period: 'hour1' | 'hours24'): number {
+  return m.priceChanges?.[period] ?? 0;
+}
+
+// Trending: significant absolute change OR significant relative change
+// Considers both 1h and 24h movements
+function isTrending(m: any): boolean {
+  const change1h = getChange(m, 'hour1');
+  const change24h = getChange(m, 'hours24');
+  const currentProb = m.displayProbability ?? 50;
+
+  // Absolute threshold: 3+ percentage points
+  if (Math.abs(change1h) >= 3 || Math.abs(change24h) >= 3) return true;
+
+  // Relative threshold for low-probability markets
+  // A move from 5% to 8% is only 3 absolute points but 60% relative increase
+  const prev24h = currentProb - change24h;
+  if (prev24h > 0 && prev24h < 25) {
+    const relativeChange = Math.abs(change24h) / prev24h;
+    if (relativeChange >= 0.5) return true; // 50%+ relative move
+  }
+
+  return false;
+}
+
+// Score for sorting trending markets (higher = more trending)
+function trendingScore(m: any): number {
+  const change1h = getChange(m, 'hour1');
+  const change24h = getChange(m, 'hours24');
+  // Weight 1h changes more heavily (more recent momentum)
+  return Math.abs(change1h) * 3 + Math.abs(change24h);
+}
+
+// Sort: trending first by score, then non-trending by volume
+const trendingMarkets = markets
+  .filter((m: any) => isTrending(m))
+  .sort((a: any, b: any) => trendingScore(b) - trendingScore(a));
+
+const nonTrendingMarkets = markets
+  .filter((m: any) => !isTrending(m))
+  .sort((a: any, b: any) => Number(b.volume ?? 0) - Number(a.volume ?? 0));
+
+const sortedMarkets = [...trendingMarkets, ...nonTrendingMarkets];
 
 function formatVolume(vol: number): string {
   if (vol >= 1_000_000) return `${(vol / 1_000_000).toFixed(1)}M`;
@@ -73,7 +110,7 @@ const POLYMARKET_REF = '?via=ferdous-bhai';
 
     <div class="market-list" id="market-list">
       {sortedMarkets.map((market: any) => {
-        const trending = (market.priceChanges?.hours24 || 0) >= 3;
+        const trending = isTrending(market);
         const url = market.eventSlug
           ? `${POLYMARKET_URL}/event/${market.eventSlug}${POLYMARKET_REF}`
           : `${POLYMARKET_URL}/${market.slug}${POLYMARKET_REF}`;
