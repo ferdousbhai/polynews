@@ -25,6 +25,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Create placeholder data for build
+        run: |
+          mkdir -p data
+          echo '{"markets":[],"lastUpdated":""}' > data/markets.json
+
       - run: pnpm build
 
       - uses: cloudflare/wrangler-action@v3
