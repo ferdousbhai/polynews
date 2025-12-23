@@ -260,13 +260,44 @@ h1 {
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(59, 130, 246, 0.08) 100%);
 }
 
-.vote-box {
+.vote-box, .score-box {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 8px;
   text-align: center;
+}
+
+.score-box {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--accent);
+  background: rgba(139, 92, 246, 0.1);
+  border-radius: var(--radius);
+  min-width: 48px;
+}
+
+.trending-reason {
+  font-size: 0.75rem;
+  color: var(--accent);
+  margin-top: 4px;
+  opacity: 0.9;
+}
+
+.market-item.hot {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(139, 92, 246, 0.1) 100%);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.market-item.hot::before {
+  background: linear-gradient(90deg, transparent, var(--warning), var(--accent), transparent);
+  opacity: 0.7;
+}
+
+.market-item.hot .score-box {
+  color: var(--warning);
+  background: rgba(245, 158, 11, 0.15);
 }
 
 .market-content {

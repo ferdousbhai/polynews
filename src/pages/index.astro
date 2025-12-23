@@ -10,6 +10,7 @@ const response = await fetch(`${R2_URL}/markets.json`);
 const marketsData: { markets: any[]; lastUpdated: string } = await response.json();
 
 const { markets, lastUpdated } = marketsData;
+// Markets come pre-sorted by trending score from the worker
 
 // Pre-compute categories
 const categories = [...new Set(markets.map((m: any) => m.category || 'Uncategorized'))];
@@ -17,51 +18,6 @@ const categoryCounts = categories.reduce((acc: Record<string, number>, cat: stri
   acc[cat] = markets.filter((m: any) => (m.category || 'Uncategorized') === cat).length;
   return acc;
 }, {} as Record<string, number>);
-
-// Helper to safely get price change
-function getChange(m: any, period: 'hour1' | 'hours24'): number {
-  return m.priceChanges?.[period] ?? 0;
-}
-
-// Trending: significant absolute change OR significant relative change
-// Considers both 1h and 24h movements
-function isTrending(m: any): boolean {
-  const change1h = getChange(m, 'hour1');
-  const change24h = getChange(m, 'hours24');
-  const currentProb = m.displayProbability ?? 50;
-
-  // Absolute threshold: 3+ percentage points
-  if (Math.abs(change1h) >= 3 || Math.abs(change24h) >= 3) return true;
-
-  // Relative threshold for low-probability markets
-  // A move from 5% to 8% is only 3 absolute points but 60% relative increase
-  const prev24h = currentProb - change24h;
-  if (prev24h > 0 && prev24h < 25) {
-    const relativeChange = Math.abs(change24h) / prev24h;
-    if (relativeChange >= 0.5) return true; // 50%+ relative move
-  }
-
-  return false;
-}
-
-// Score for sorting trending markets (higher = more trending)
-function trendingScore(m: any): number {
-  const change1h = getChange(m, 'hour1');
-  const change24h = getChange(m, 'hours24');
-  // Weight 1h changes more heavily (more recent momentum)
-  return Math.abs(change1h) * 3 + Math.abs(change24h);
-}
-
-// Sort: trending first by score, then non-trending by volume
-const trendingMarkets = markets
-  .filter((m: any) => isTrending(m))
-  .sort((a: any, b: any) => trendingScore(b) - trendingScore(a));
-
-const nonTrendingMarkets = markets
-  .filter((m: any) => !isTrending(m))
-  .sort((a: any, b: any) => Number(b.volume ?? 0) - Number(a.volume ?? 0));
-
-const sortedMarkets = [...trendingMarkets, ...nonTrendingMarkets];
 
 function formatVolume(vol: number): string {
   if (vol >= 1_000_000) return `${(vol / 1_000_000).toFixed(1)}M`;
@@ -80,6 +36,13 @@ function formatLastUpdated(timestamp: string): string {
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `Updated ${hrs}h ago`;
   return `Updated ${Math.floor(hrs / 24)}d ago`;
+}
+
+// Format trending reasons for display
+function formatTrendingReason(market: any): string {
+  const reasons = market.trendingScore?.reasons || [];
+  if (reasons.length === 0) return '';
+  return reasons[0]; // Show primary reason
 }
 
 const POLYMARKET_URL = 'https://polymarket.com';
@@ -109,19 +72,22 @@ const POLYMARKET_REF = '?via=ferdous-bhai';
     </div>
 
     <div class="market-list" id="market-list">
-      {sortedMarkets.map((market: any) => {
-        const trending = isTrending(market);
+      {markets.map((market: any, index: number) => {
         const url = market.eventSlug
           ? `${POLYMARKET_URL}/event/${market.eventSlug}${POLYMARKET_REF}`
           : `${POLYMARKET_URL}/${market.slug}${POLYMARKET_REF}`;
         const days = getDaysRemaining(market.endDateIso);
+        const trendingReason = formatTrendingReason(market);
+        const score = market.trendingScore?.score || 0;
+        // Top 3 get extra highlight
+        const isHot = index < 3 && score >= 25;
 
         return (
           <div
-            class={`market-item${trending ? ' trending' : ''}`}
+            class={`market-item trending${isHot ? ' hot' : ''}`}
             data-category={market.category || 'Uncategorized'}
           >
-            <div class="vote-box">{formatVolume(Number(market.volume))}</div>
+            <div class="score-box" title={`Trending score: ${score}`}>{score}</div>
             <div class="market-content">
               <div class="market-title-row">
                 <a href={url} target="_blank" rel="noopener" class="market-title">
@@ -132,6 +98,9 @@ const POLYMARKET_REF = '?via=ferdous-bhai';
                   <span>{days}d</span>
                 </div>
               </div>
+              {trendingReason && (
+                <div class="trending-reason">{trendingReason}</div>
+              )}
             </div>
           </div>
         );
@@ -142,7 +111,7 @@ const POLYMARKET_REF = '?via=ferdous-bhai';
   <footer>
     <div class="container">
       <span>{formatLastUpdated(lastUpdated)}</span>
-      <span>Markets closing within 90 days · <a href={`${POLYMARKET_URL}${POLYMARKET_REF}`} target="_blank" rel="noopener">Polymarket</a></span>
+      <span>Trending markets · <a href={`${POLYMARKET_URL}${POLYMARKET_REF}`} target="_blank" rel="noopener">Polymarket</a></span>
     </div>
   </footer>
 </Layout>

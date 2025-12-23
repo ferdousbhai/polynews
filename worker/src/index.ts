@@ -37,12 +37,19 @@ interface ProcessedMarket extends PolymarketMarket {
   category: string;
   eventSlug?: string;
   priceChanges: PriceChanges;
+  trendingScore: TrendingScore;
 }
 
 interface PriceChanges {
   hour1: number | null;
   hours24: number | null;
   days7: number | null;
+}
+
+interface TrendingScore {
+  score: number;
+  isTrending: boolean;
+  reasons: string[];
 }
 
 interface MarketStatement {
@@ -263,6 +270,93 @@ function calculatePriceChanges(
   }
 
   return changes;
+}
+
+// Calculate trending score based on momentum, entropy, and threshold crossings
+function calculateTrendingScore(
+  prob: number,
+  priceChanges: PriceChanges,
+  volume: number
+): TrendingScore {
+  const reasons: string[] = [];
+  let score = 0;
+
+  const change1h = priceChanges.hour1 ?? 0;
+  const change24h = priceChanges.hours24 ?? 0;
+  const change7d = priceChanges.days7 ?? 0;
+
+  // 1. MOMENTUM COMPONENT (0-40 points)
+  // Weighted: 1h = 3x, 24h = 1x (recent matters more)
+  const momentumRaw = Math.abs(change1h) * 3 + Math.abs(change24h);
+  const momentumScore = Math.min(40, momentumRaw * 2);
+  score += momentumScore;
+
+  if (Math.abs(change1h) >= 2) {
+    reasons.push(`${change1h > 0 ? "+" : ""}${change1h.toFixed(1)}% in 1h`);
+  } else if (Math.abs(change24h) >= 3) {
+    reasons.push(`${change24h > 0 ? "+" : ""}${change24h.toFixed(1)}% in 24h`);
+  }
+
+  // 2. ENTROPY BONUS (0-20 points)
+  // Markets near 50% have max uncertainty = most informative when they move
+  const p = prob / 100;
+  const entropy = p > 0 && p < 1 ? -(p * Math.log2(p) + (1 - p) * Math.log2(1 - p)) : 0;
+  const entropyBonus = entropy * 20;
+  score += entropyBonus;
+
+  if (prob >= 40 && prob <= 60) {
+    reasons.push("high uncertainty");
+  }
+
+  // 3. THRESHOLD CROSSING (0-20 points)
+  // Crossing 25%, 50%, 75% is inherently newsworthy
+  const prev24h = prob - change24h;
+  const thresholds = [25, 50, 75];
+  for (const threshold of thresholds) {
+    if (
+      (prev24h < threshold && prob >= threshold) ||
+      (prev24h > threshold && prob <= threshold)
+    ) {
+      score += 20;
+      reasons.push(`crossed ${threshold}%`);
+      break;
+    }
+  }
+
+  // 4. VOLUME WEIGHT (0-10 points)
+  // High volume = confirmed move, real market participation
+  if (volume >= 1_000_000) {
+    score += 10;
+  } else if (volume >= 100_000) {
+    score += 5;
+  } else if (volume >= 10_000) {
+    score += 2;
+  }
+
+  // 5. SUSTAINED TREND BONUS (0-10 points)
+  // Same direction across timeframes = stronger signal
+  if (
+    change1h !== 0 &&
+    change24h !== 0 &&
+    change7d !== 0 &&
+    Math.sign(change1h) === Math.sign(change24h) &&
+    Math.sign(change24h) === Math.sign(change7d) &&
+    Math.abs(change7d) >= 5
+  ) {
+    score += 10;
+    reasons.push("sustained trend");
+  }
+
+  // PENALTY: Markets at extremes need bigger moves to be interesting
+  if (prob > 90 || prob < 10) {
+    score *= 0.5;
+  }
+
+  return {
+    score: Math.round(score),
+    isTrending: score >= 15, // threshold for what counts as "trending"
+    reasons,
+  };
 }
 
 // Load redundancy cache from D1
@@ -562,7 +656,7 @@ async function filterAndProcessMarkets(
   const now = Date.now();
   const filtered: Array<PolymarketMarket & { mostLikelyOutcome: string; currentProbability: number }> = [];
 
-  // Basic filtering
+  // Basic filtering - looser criteria, let trending logic do the heavy lifting
   for (const market of markets) {
     if (!market.endDateIso || !market.active || market.closed) continue;
 
@@ -573,8 +667,13 @@ async function filterAndProcessMarkets(
 
       const { outcome, probability } = getMostLikelyOutcome(market);
       if (!outcome || probability === null) continue;
-      if (outcome === "No") continue;
-      if (probability < 55) continue;
+
+      // Minimum volume filter - need real market activity
+      const volume = parseFloat(String(market.volume || 0));
+      if (volume < 10_000) continue;
+
+      // Exclude extreme certainty markets (essentially decided)
+      if (probability > 95 || probability < 5) continue;
 
       filtered.push({
         ...market,
@@ -637,6 +736,8 @@ async function filterAndProcessMarkets(
     const cached = statementCache.get(market.id);
 
     const priceChanges = calculatePriceChanges(market, snapshots);
+    const volume = parseFloat(String(market.volume || 0));
+    const trendingScore = calculateTrendingScore(market.currentProbability, priceChanges, volume);
 
     if (cached && cached.outcome === market.mostLikelyOutcome) {
       processed.push({
@@ -646,6 +747,7 @@ async function filterAndProcessMarkets(
         category: cached.category,
         eventSlug: market.events?.[0]?.slug,
         priceChanges,
+        trendingScore,
       });
     } else {
       marketsNeedingStatements.push(market);
@@ -658,6 +760,7 @@ async function filterAndProcessMarkets(
         category: "",
         eventSlug: market.events?.[0]?.slug,
         priceChanges,
+        trendingScore,
       });
     }
   }
@@ -686,10 +789,23 @@ async function filterAndProcessMarkets(
     await saveStatementCache(env.DB, newStatements);
   }
 
-  // Sort by volume (descending)
-  processed.sort((a, b) => parseFloat(String(b.volume || 0)) - parseFloat(String(a.volume || 0)));
+  // Filter to only trending markets and sort by score (highest first)
+  const trending = processed.filter((m) => m.trendingScore.isTrending);
+  trending.sort((a, b) => b.trendingScore.score - a.trendingScore.score);
 
-  return processed;
+  console.log(`Trending: ${trending.length} of ${processed.length} markets`);
+
+  // If very few trending, include top movers by absolute change as fallback
+  if (trending.length < 3) {
+    const nonTrending = processed
+      .filter((m) => !m.trendingScore.isTrending)
+      .sort((a, b) => b.trendingScore.score - a.trendingScore.score)
+      .slice(0, 5 - trending.length);
+    console.log(`Adding ${nonTrending.length} top movers as fallback`);
+    return [...trending, ...nonTrending];
+  }
+
+  return trending;
 }
 
 // Upload to R2
