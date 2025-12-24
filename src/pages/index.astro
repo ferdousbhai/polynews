@@ -20,9 +20,9 @@ const categoryCounts = categories.reduce((acc: Record<string, number>, cat: stri
 }, {} as Record<string, number>);
 
 function formatVolume(vol: number): string {
-  if (vol >= 1_000_000) return `${(vol / 1_000_000).toFixed(1)}M`;
-  if (vol >= 1_000) return `${(vol / 1_000).toFixed(0)}K`;
-  return `${vol.toFixed(0)}`;
+  if (vol >= 1_000_000) return `$${(vol / 1_000_000).toFixed(1)}M`;
+  if (vol >= 1_000) return `$${(vol / 1_000).toFixed(0)}K`;
+  return `$${vol.toFixed(0)}`;
 }
 
 function getDaysRemaining(endDate: string): number {
@@ -72,22 +72,20 @@ const POLYMARKET_REF = '?via=ferdous-bhai';
     </div>
 
     <div class="market-list" id="market-list">
-      {markets.map((market: any, index: number) => {
+      {markets.map((market: any) => {
         const url = market.eventSlug
           ? `${POLYMARKET_URL}/event/${market.eventSlug}${POLYMARKET_REF}`
           : `${POLYMARKET_URL}/${market.slug}${POLYMARKET_REF}`;
         const days = getDaysRemaining(market.endDateIso);
         const trendingReason = formatTrendingReason(market);
-        const score = market.trendingScore?.score || 0;
-        // Top 3 get extra highlight
-        const isHot = index < 3 && score >= 25;
+        const volume = parseFloat(market.volume || 0);
 
         return (
           <div
-            class={`market-item trending${isHot ? ' hot' : ''}`}
+            class="market-item"
             data-category={market.category || 'Uncategorized'}
           >
-            <div class="score-box" title={`Trending score: ${score}`}>{score}</div>
+            <div class="volume-box" title={`Total volume: ${formatVolume(volume)}`}>{formatVolume(volume)}</div>
             <div class="market-content">
               <div class="market-title-row">
                 <a href={url} target="_blank" rel="noopener" class="market-title">
